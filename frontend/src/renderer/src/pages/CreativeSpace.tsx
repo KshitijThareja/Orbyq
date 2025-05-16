@@ -9,17 +9,15 @@ import { Plus, FileText, Pencil, Trash2, Save, Undo, Redo, Type, Palette, Grid3X
 import { motion } from "framer-motion"
 import placeholder from '../../../../resources/placeholder.svg'
 
-// Define a type for the style property
 type CanvasItemStyle = {
   fontSize?: string;
   fontWeight?: string;
-  color?: string;
-  backgroundColor?: string;
+  colorClass?: string; // Use Tailwind class instead of color
+  backgroundClass?: string; // Use Tailwind class for background
   padding?: string;
   borderRadius?: string;
 };
 
-// Define a type for the canvas item
 type CanvasItem = {
   id: number;
   type: string;
@@ -42,7 +40,7 @@ const CreativeSpace = () => {
       y: 50,
       width: 200,
       height: 50,
-      style: { fontSize: "24px", fontWeight: "bold", color: "#334155" },
+      style: { fontSize: "24px", fontWeight: "bold", colorClass: "text-foreground" },
     },
     {
       id: 2,
@@ -53,7 +51,7 @@ const CreativeSpace = () => {
       y: 120,
       width: 300,
       height: 80,
-      style: { fontSize: "14px", color: "#64748b" },
+      style: { fontSize: "14px", colorClass: "text-muted-foreground" },
     },
     {
       id: 3,
@@ -73,7 +71,7 @@ const CreativeSpace = () => {
       y: 250,
       width: 200,
       height: 100,
-      style: { backgroundColor: "#fef3c7", padding: "10px", borderRadius: "4px" },
+      style: { backgroundClass: "bg-note", padding: "10px", borderRadius: "4px" },
     },
   ])
 
@@ -142,10 +140,10 @@ const CreativeSpace = () => {
       width: type === "text" ? 200 : 200,
       height: type === "text" ? 50 : type === "image" ? 150 : 100,
       style: type === "text"
-        ? { fontSize: "14px", fontWeight: "normal", color: "#000" }
+        ? { fontSize: "14px", fontWeight: "normal", colorClass: "text-foreground" }
         : type === "note"
-          ? { backgroundColor: "#fef3c7", padding: "10px", borderRadius: "4px" }
-          : { backgroundColor: "" },
+          ? { backgroundClass: "bg-note", padding: "10px", borderRadius: "4px" }
+          : {},
     }
 
     setCanvasItems([...canvasItems, newItem])
@@ -160,17 +158,17 @@ const CreativeSpace = () => {
   }
 
   return (
-    <div className="p-6 h-full">
+    <div className="p-6 h-full bg-background">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Creative Space</h1>
-          <p className="text-slate-500">Organize your ideas and inspirations</p>
+          <h1 className="text-2xl font-bold text-foreground">Creative Space</h1>
+          <p className="text-muted-foreground">Organize your ideas and inspirations</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="border-border text-foreground hover:bg-muted">
             <Save size={14} className="mr-1" /> Save
           </Button>
-          <Button size="sm" className="bg-teal-600 hover:bg-teal-700">
+          <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
             <Plus size={14} className="mr-1" /> New Canvas
           </Button>
         </div>
@@ -178,38 +176,63 @@ const CreativeSpace = () => {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="h-[calc(100%-80px)]">
         <div className="flex justify-between items-center mb-4">
-          <TabsList>
-            <TabsTrigger value="canvas">Canvas</TabsTrigger>
-            <TabsTrigger value="documents">Documents</TabsTrigger>
-            <TabsTrigger value="moodboard">Mood Board</TabsTrigger>
+          <TabsList className="bg-muted">
+            <TabsTrigger value="canvas" className="data-[state=active]:bg-background">Canvas</TabsTrigger>
+            <TabsTrigger value="documents" className="data-[state=active]:bg-background">Documents</TabsTrigger>
+            <TabsTrigger value="moodboard" className="data-[state=active]:bg-background">Mood Board</TabsTrigger>
           </TabsList>
 
           <div className="flex gap-2">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="text-foreground hover:bg-muted">
               <Undo size={16} />
             </Button>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="text-foreground hover:bg-muted">
               <Redo size={16} />
             </Button>
-            <Button variant="ghost" size="icon" onClick={deleteItem} disabled={!selectedItem}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-foreground hover:bg-muted"
+              onClick={deleteItem}
+              disabled={!selectedItem}
+            >
               <Trash2 size={16} />
             </Button>
           </div>
         </div>
 
         <TabsContent value="canvas" className="h-full mt-0">
-          <Card className="h-full">
-            <CardHeader className="p-4 pb-0">
+          <Card className="h-full bg-background border-border">
+            <CardHeader className="p-4 pb-4">
               <div className="flex justify-between items-center">
-                <Input className="max-w-xs" placeholder="Untitled Canvas" defaultValue="Project Brainstorming" />
+                <Input
+                  className="max-w-xs border-border bg-background text-foreground placeholder:text-muted-foreground"
+                  placeholder="Untitled Canvas"
+                  defaultValue="Project Brainstorming"
+                />
                 <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => addItem("text")}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-foreground hover:bg-muted"
+                    onClick={() => addItem("text")}
+                  >
                     <Type size={14} className="mr-1" /> Text
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => addItem("image")}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-foreground hover:bg-muted"
+                    onClick={() => addItem("image")}
+                  >
                     <ImageIcon size={14} className="mr-1" /> Image
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => addItem("note")}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-foreground hover:bg-muted"
+                    onClick={() => addItem("note")}
+                  >
                     <FileText size={14} className="mr-1" /> Note
                   </Button>
                 </div>
@@ -218,23 +241,22 @@ const CreativeSpace = () => {
             <CardContent className="p-4 h-[calc(100%-70px)]">
               <div
                 ref={canvasRef}
-                className="w-full h-full bg-white rounded-md border border-slate-200 overflow-auto relative"
+                className="w-full h-full bg-background rounded-md border border-border overflow-auto relative"
                 onClick={handleCanvasClick}
                 style={{
-                  backgroundImage: "radial-gradient(circle, #f1f5f9 1px, transparent 1px)",
+                  backgroundImage: "radial-gradient(circle, hsl(var(--muted)) 1px, transparent 1px)",
                   backgroundSize: "20px 20px",
                 }}
               >
                 {canvasItems.map((item) => (
                   <motion.div
                     key={item.id}
-                    className={`absolute cursor-move ${selectedItem === item.id ? "ring-2 ring-teal-500 ring-offset-2" : ""}`}
+                    className={`absolute cursor-move ${selectedItem === item.id ? "ring-2 ring-primary ring-offset-2" : ""}`}
                     style={{
                       left: item.x,
                       top: item.y,
                       width: item.width,
                       height: item.height,
-                      ...item.style,
                     }}
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -243,10 +265,10 @@ const CreativeSpace = () => {
                   >
                     {item.type === "text" && (
                       <div
+                        className={item.style.colorClass}
                         style={{
                           fontSize: item.style.fontSize,
                           fontWeight: item.style.fontWeight,
-                          color: item.style.color,
                         }}
                       >
                         {item.content}
@@ -259,7 +281,11 @@ const CreativeSpace = () => {
                         className="w-full h-full object-cover rounded-md"
                       />
                     )}
-                    {item.type === "note" && <div className="h-full">{item.content}</div>}
+                    {item.type === "note" && (
+                      <div className={`${item.style.backgroundClass} h-full rounded-md p-2 text-foreground`}>
+                        {item.content}
+                      </div>
+                    )}
                   </motion.div>
                 ))}
               </div>
@@ -268,10 +294,10 @@ const CreativeSpace = () => {
         </TabsContent>
 
         <TabsContent value="documents" className="h-full mt-0">
-          <Card className="h-full">
+          <Card className="h-full bg-background border-border">
             <CardHeader>
-              <CardTitle>Documents</CardTitle>
-              <CardDescription>Create and manage your documents</CardDescription>
+              <CardTitle className="text-foreground">Documents</CardTitle>
+              <CardDescription className="text-muted-foreground">Create and manage your documents</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -281,26 +307,31 @@ const CreativeSpace = () => {
                   { title: "Research Findings", date: "Updated 3 days ago" },
                   { title: "Design Guidelines", date: "Updated yesterday" },
                 ].map((doc, i) => (
-                  <Card key={i} className="cursor-pointer hover:shadow-md transition-shadow">
+                  <Card
+                    key={i}
+                    className="cursor-pointer hover:shadow-md transition-shadow bg-background border-border"
+                  >
                     <CardHeader className="p-4">
                       <div className="flex justify-between items-start">
-                        <FileText className="text-slate-400" />
-                        <Button variant="ghost" size="icon" className="h-6 w-6">
+                        <FileText className="text-muted-foreground" />
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-foreground hover:bg-muted">
                           <Pencil size={14} />
                         </Button>
                       </div>
                     </CardHeader>
                     <CardContent className="p-4 pt-0">
-                      <h3 className="font-medium">{doc.title}</h3>
-                      <p className="text-xs text-slate-500 mt-1">{doc.date}</p>
+                      <h3 className="font-medium text-foreground">{doc.title}</h3>
+                      <p className="text-xs text-muted-foreground mt-1">{doc.date}</p>
                     </CardContent>
                   </Card>
                 ))}
 
-                <Card className="cursor-pointer hover:shadow-md transition-shadow border-dashed border-2 flex items-center justify-center h-[140px]">
+                <Card
+                  className="cursor-pointer hover:shadow-md transition-shadow border-dashed border-2 border-border bg-background flex items-center justify-center h-[140px]"
+                >
                   <div className="text-center">
-                    <Plus size={24} className="mx-auto text-slate-400 mb-2" />
-                    <p className="text-sm text-slate-500">Create New Document</p>
+                    <Plus size={24} className="mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">Create New Document</p>
                   </div>
                 </Card>
               </div>
@@ -309,18 +340,26 @@ const CreativeSpace = () => {
         </TabsContent>
 
         <TabsContent value="moodboard" className="h-full mt-0">
-          <Card className="h-full">
+          <Card className="h-full bg-background border-border">
             <CardHeader className="p-4 pb-0">
               <div className="flex justify-between items-center">
                 <div>
-                  <CardTitle>Mood Board</CardTitle>
-                  <CardDescription>Collect visual inspiration</CardDescription>
+                  <CardTitle className="text-foreground">Mood Board</CardTitle>
+                  <CardDescription className="text-muted-foreground">Collect visual inspiration</CardDescription>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-border text-foreground hover:bg-muted"
+                  >
                     <Grid3X3 size={14} className="mr-1" /> Layout
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-border text-foreground hover:bg-muted"
+                  >
                     <Palette size={14} className="mr-1" /> Theme
                   </Button>
                 </div>
@@ -329,7 +368,7 @@ const CreativeSpace = () => {
             <CardContent className="p-4">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {[...Array(7)].map((_, i) => (
-                  <div key={i} className="aspect-square bg-slate-100 rounded-md overflow-hidden relative group">
+                  <div key={i} className="aspect-square bg-muted rounded-md overflow-hidden relative group">
                     <img
                       src={placeholder}
                       alt={`Mood board item ${i + 1}`}
@@ -337,10 +376,18 @@ const CreativeSpace = () => {
                     />
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
                       <div className="flex gap-2">
-                        <Button variant="ghost" size="icon" className="text-white h-8 w-8">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-primary-foreground h-8 w-8 hover:bg-muted"
+                        >
                           <Pencil size={14} />
                         </Button>
-                        <Button variant="ghost" size="icon" className="text-white h-8 w-8">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-primary-foreground h-8 w-8 hover:bg-muted"
+                        >
                           <Trash2 size={14} />
                         </Button>
                       </div>
@@ -348,10 +395,12 @@ const CreativeSpace = () => {
                   </div>
                 ))}
 
-                <div className="aspect-square bg-slate-50 rounded-md border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer hover:bg-slate-100 transition-colors">
+                <div
+                  className="aspect-square bg-background rounded-md border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:bg-muted transition-colors"
+                >
                   <div className="text-center">
-                    <Plus size={24} className="mx-auto text-slate-400 mb-2" />
-                    <p className="text-sm text-slate-500">Add Image</p>
+                    <Plus size={24} className="mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">Add Image</p>
                   </div>
                 </div>
               </div>

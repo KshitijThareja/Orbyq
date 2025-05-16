@@ -37,14 +37,14 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
   return (
     <motion.aside
       className={cn(
-        "h-screen bg-slate-50 border-r border-slate-200 flex flex-col transition-all duration-300 ease-in-out",
+        "h-screen bg-background border-r border-border flex flex-col transition-all duration-300 ease-in-out",
         collapsed ? "w-16" : "w-64",
       )}
       initial={{ x: -10, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.3 }}
     >
-      <div className="p-4 flex items-center justify-between border-b border-slate-200">
+      <div className="p-4 flex items-center justify-between border-b border-border">
         {!collapsed && (
           <div className="flex items-center">
             <div className="relative h-10 w-10 mr-3">
@@ -52,7 +52,7 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
               <div className="absolute inset-1 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full"></div>
             </div>
             <motion.h1
-              className="text-xl font-semibold text-slate-800"
+              className="text-xl font-semibold text-foreground"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
@@ -61,10 +61,15 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
             </motion.h1>
           </div>
         )}
-        <Button variant="ghost" size="icon" onClick={() => {
-          setCollapsed(!collapsed)
-          setOpen(!collapsed) // Sync with parent state
-        }} className="ml-auto">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => {
+            setCollapsed(!collapsed)
+            setOpen(!collapsed) // Sync with parent state
+          }}
+          className="ml-auto text-foreground hover:bg-muted"
+        >
           {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </Button>
       </div>
@@ -78,8 +83,8 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
               className={({ isActive }) =>
                 cn(
                   "flex items-center gap-3 px-3 py-2 rounded-md transition-colors",
-                  "hover:bg-slate-200/50",
-                  isActive ? "bg-slate-200/70 text-slate-900" : "text-slate-600",
+                  "hover:bg-muted",
+                  isActive ? "bg-muted text-foreground" : "text-muted-foreground",
                   collapsed && "justify-center",
                 )
               }
@@ -91,9 +96,14 @@ const Sidebar = ({ open, setOpen }: SidebarProps) => {
         </nav>
       </div>
 
-      <div className="p-4 border-t border-slate-200">
-        <Button className={cn("w-full bg-teal-600 hover:bg-teal-700 text-white", collapsed && "p-2")}>
-          <PlusCircle size={18} className="mr-2" />
+      <div className="p-4 border-t border-border">
+        <Button
+          className={cn(
+            "w-full bg-primary hover:bg-primary/90 text-primary-foreground",
+            collapsed && "p-2",
+          )}
+        >
+          <PlusCircle size={18} />
           {!collapsed && "New Project"}
         </Button>
       </div>

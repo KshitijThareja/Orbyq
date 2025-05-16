@@ -12,7 +12,7 @@ import "./assets/index.css"
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="dark">
+    <ThemeProvider defaultTheme="light">
       <Router>
         <div className="flex h-screen bg-background">
           <Sidebar open={true} setOpen={() => {}} />
