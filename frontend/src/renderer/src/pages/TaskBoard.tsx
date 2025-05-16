@@ -125,16 +125,13 @@ const TaskBoard = () => {
   const onDragEnd = (result) => {
     const { destination, source, draggableId } = result
 
-    // If there's no destination or if the item was dropped in the same place
     if (!destination || (destination.droppableId === source.droppableId && destination.index === source.index)) {
       return
     }
 
-    // Get source and destination columns
     const sourceColumn = boardData.columns[source.droppableId]
     const destColumn = boardData.columns[destination.droppableId]
 
-    // If moving within the same column
     if (sourceColumn === destColumn) {
       const newTaskIds = Array.from(sourceColumn.taskIds)
       newTaskIds.splice(source.index, 1)
@@ -157,7 +154,6 @@ const TaskBoard = () => {
       return
     }
 
-    // Moving from one column to another
     const sourceTaskIds = Array.from(sourceColumn.taskIds)
     sourceTaskIds.splice(source.index, 1)
     const newSourceColumn = {
@@ -187,28 +183,28 @@ const TaskBoard = () => {
   const getPriorityColor = (priority) => {
     switch (priority) {
       case "high":
-        return "bg-rose-500"
+        return "bg-priority-high"
       case "medium":
-        return "bg-amber-500"
+        return "bg-priority-medium"
       case "low":
-        return "bg-emerald-500"
+        return "bg-priority-low"
       default:
-        return "bg-slate-500"
+        return "bg-muted"
     }
   }
 
   return (
-    <div className="p-6 h-full">
+    <div className="p-6 h-full bg-background">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Task Board</h1>
-          <p className="text-slate-500">Manage and organize your tasks</p>
+          <h1 className="text-2xl font-bold text-foreground">Task Board</h1>
+          <p className="text-muted-foreground">Manage and organize your tasks</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="border-border text-foreground hover:bg-muted">
             Filter
           </Button>
-          <Button size="sm" className="bg-teal-600 hover:bg-teal-700">
+          <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
             <Plus size={16} className="mr-1" /> Add Task
           </Button>
         </div>
@@ -229,8 +225,8 @@ const TaskBoard = () => {
                 className="flex flex-col h-full"
               >
                 <div className="flex justify-between items-center mb-3">
-                  <h3 className="font-medium text-slate-700">{column.title}</h3>
-                  <Badge variant="outline" className="bg-slate-100">
+                  <h3 className="font-medium text-foreground">{column.title}</h3>
+                  <Badge variant="outline" className="bg-muted text-foreground">
                     {column.taskIds.length}
                   </Badge>
                 </div>
@@ -241,8 +237,8 @@ const TaskBoard = () => {
                       ref={provided.innerRef}
                       {...provided.droppableProps}
                       className={`flex-1 p-2 rounded-lg overflow-y-auto ${
-                        snapshot.isDraggingOver ? "bg-slate-100" : "bg-slate-50"
-                      }`}
+                        snapshot.isDraggingOver ? "bg-muted" : "bg-background"
+                      } border border-border`}
                     >
                       {tasks.map((task, index) => (
                         <Draggable key={task.id} draggableId={task.id} index={index}>
@@ -251,24 +247,26 @@ const TaskBoard = () => {
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
-                              className={`mb-3 shadow-sm ${snapshot.isDragging ? "shadow-md" : ""}`}
+                              className={`mb-3 shadow-sm bg-background border-border ${
+                                snapshot.isDragging ? "shadow-md" : ""
+                              }`}
                             >
                               <CardHeader className="p-3 pb-0">
                                 <div className="flex justify-between items-start">
                                   <div className="flex gap-2 items-center">
                                     <div className={`w-2 h-2 rounded-full ${getPriorityColor(task.priority)}`}></div>
-                                    <CardTitle className="text-sm font-medium">{task.title}</CardTitle>
+                                    <CardTitle className="text-sm font-medium text-foreground">{task.title}</CardTitle>
                                   </div>
-                                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:bg-muted">
                                     <MoreHorizontal size={14} />
                                   </Button>
                                 </div>
                               </CardHeader>
                               <CardContent className="p-3 pt-2">
-                                <CardDescription className="text-xs">{task.description}</CardDescription>
+                                <CardDescription className="text-xs text-muted-foreground">{task.description}</CardDescription>
                               </CardContent>
                               <CardFooter className="p-3 pt-0 flex justify-between items-center">
-                                <div className="flex items-center gap-3 text-slate-500">
+                                <div className="flex items-center gap-3 text-muted-foreground">
                                   {task.comments > 0 && (
                                     <div className="flex items-center gap-1 text-xs">
                                       <MessageSquare size={12} />
@@ -283,13 +281,13 @@ const TaskBoard = () => {
                                   )}
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <div className="flex items-center text-xs text-slate-500">
+                                  <div className="flex items-center text-xs text-muted-foreground">
                                     <Clock size={12} className="mr-1" />
                                     {task.dueDate.split("-")[1]}/{task.dueDate.split("-")[2]}
                                   </div>
                                   <Avatar className="h-6 w-6">
                                     <AvatarImage src="/placeholder.svg?height=24&width=24" />
-                                    <AvatarFallback className="text-[10px]">{task.id.split("-")[1]}</AvatarFallback>
+                                    <AvatarFallback className="text-[10px] bg-muted text-foreground">{task.id.split("-")[1]}</AvatarFallback>
                                   </Avatar>
                                 </div>
                               </CardFooter>
@@ -298,7 +296,7 @@ const TaskBoard = () => {
                         </Draggable>
                       ))}
                       {provided.placeholder}
-                      <Button variant="ghost" className="w-full justify-start text-slate-500 text-sm h-auto py-2">
+                      <Button variant="ghost" className="w-full justify-start text-muted-foreground text-sm h-auto py-2 hover:bg-muted">
                         <Plus size={14} className="mr-1" /> Add a card
                       </Button>
                     </div>

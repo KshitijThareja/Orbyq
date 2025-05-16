@@ -1,46 +1,139 @@
 @import "tailwindcss";
 
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
+  --background: 0 0% 100%; /* White for light mode */
+  --foreground: 222.2 84% 4.9%; /* Dark gray for text */
   --card: 0 0% 100%;
   --card-foreground: 222.2 84% 4.9%;
   --popover: 0 0% 100%;
   --popover-foreground: 222.2 84% 4.9%;
-  --primary: 173 80% 40%;
-  --primary-foreground: 210 40% 98%;
+  --primary: 173 80% 40%; /* Default: teal-600 equivalent */
+  --primary-foreground: 210 40% 98%; /* White for primary button text */
   --secondary: 210 40% 96.1%;
   --secondary-foreground: 222.2 47.4% 11.2%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
+  --muted: 210 40% 96.1%; /* Light gray for hover/active states */
+  --muted-foreground: 215.4 16.3% 46.9%; /* Medium gray for secondary text */
   --accent: 210 40% 96.1%;
   --accent-foreground: 222.2 47.4% 11.2%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
+  --border: 214.3 31.8% 91.4%; /* Light gray for borders */
   --input: 214.3 31.8% 91.4%;
   --ring: 173 80% 40%;
   --radius: 0.5rem;
+  /* Priority colors */
+  --priority-high: 0 84% 60%; /* Rose-500 equivalent */
+  --priority-medium: 45 80% 50%; /* Amber-500 equivalent */
+  --priority-low: 160 60% 45%; /* Emerald-500 equivalent */
+  /* Category colors */
+  --category-work: 173 80% 40%; /* Teal-500 equivalent */
+  --category-personal: 270 70% 50%; /* Purple-500 equivalent */
+  --category-learning: 200 80% 50%; /* Sky-500 equivalent */
+  /* Canvas note background */
+  --note-background: 50 80% 85%; /* Yellow-100 equivalent */
 }
 
 .dark {
-  --background: 222.2 84% 4.9%;
-  --foreground: 210 40% 98%;
-  --card: 222.2 84% 4.9%;
+  --background: 222.2 47.4% 11.2%; /* Lighter dark gray (slate-900) for dark mode */
+  --foreground: 210 40% 98%; /* White for text */
+  --card: 222.2 47.4% 11.2%; /* Same as background for consistency */
   --card-foreground: 210 40% 98%;
-  --popover: 222.2 84% 4.9%;
+  --popover: 222.2 47.4% 11.2%; /* Same as background for consistency */
   --popover-foreground: 210 40% 98%;
-  --primary: 173 80% 40%;
+  --primary: 173 80% 40%; /* Maintain same primary */
   --primary-foreground: 222.2 47.4% 11.2%;
   --secondary: 217.2 32.6% 17.5%;
   --secondary-foreground: 210 40% 98%;
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
+  --muted: 217.2 32.6% 17.5%; /* Darker gray for hover/active */
+  --muted-foreground: 215 20.2% 65.1%; /* Light gray for secondary text */
   --accent: 217.2 32.6% 17.5%;
   --accent-foreground: 210 40% 98%;
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 210 40% 98%;
-  --border: 217.2 32.6% 17.5%;
+  --border: 217.2 32.6% 17.5%; /* Darker gray for borders */
   --input: 217.2 32.6% 17.5%;
   --ring: 173 80% 40%;
+  /* Priority colors (slightly lighter for dark mode contrast) */
+  --priority-high: 0 80% 65%;
+  --priority-medium: 45 75% 55%;
+  --priority-low: 160 55% 50%;
+  /* Category colors (adjusted for dark mode) */
+  --category-work: 173 75% 45%;
+  --category-personal: 270 65% 55%;
+  --category-learning: 200 75% 55%;
+  --note-background: 50 70% 40%; /* Darker yellow for dark mode */
+}
+
+/* Color scheme variations */
+[data-color-scheme="teal"] {
+  --primary: 173 80% 40%; /* teal-600 equivalent */
+  --ring: 173 80% 40%;
+}
+
+[data-color-scheme="purple"] {
+  --primary: 270 80% 50%; /* purple-600 equivalent */
+  --ring: 270 80% 50%;
+}
+
+[data-color-scheme="sky"] {
+  --primary: 200 80% 50%; /* sky-600 equivalent */
+  --ring: 200 80% 50%;
+}
+
+[data-color-scheme="slate"] {
+  --primary: 215 20% 50%; /* slate-600 equivalent */
+  --ring: 215 20% 50%;
+}
+
+/* Tailwind class mappings */
+.bg-background { background-color: hsl(var(--background)); }
+.text-foreground { color: hsl(var(--foreground)); }
+.text-destructive { color: hsl(var(--destructive)); }
+.text-muted-foreground { color: hsl(var(--muted-foreground)); }
+.bg-primary { background-color: hsl(var(--primary)); }
+.text-primary { color: hsl(var(--primary)); }
+.text-primary-foreground { color: hsl(var(--primary-foreground)); }
+.border-border { border-color: hsl(var(--border)); }
+.border-destructive { border-color: hsl(var(--destructive)); }
+.bg-muted { background-color: hsl(var(--muted)); }
+.bg-accent { background-color: hsl(var(--accent)); }
+.ring-primary { --tw-ring-color: hsl(var(--ring)); }
+.hover\:bg-primary\/90:hover { background-color: hsl(var(--primary) / 0.9); }
+.hover\:bg-muted:hover { background-color: hsl(var(--muted)); }
+.bg-priority-high { background-color: hsl(var(--priority-high)); }
+.bg-priority-medium { background-color: hsl(var(--priority-medium)); }
+.bg-priority-low { background-color: hsl(var(--priority-low)); }
+.text-priority-high { color: hsl(var(--priority-high)); }
+.text-priority-medium { color: hsl(var(--priority-medium)); }
+.text-priority-low { color: hsl(var(--priority-low)); }
+.bg-category-work { background-color: hsl(var(--category-work)); }
+.bg-category-personal { background-color: hsl(var(--category-personal)); }
+.bg-category-learning { background-color: hsl(var(--category-learning)); }
+.bg-note { background-color: hsl(var(--note-background)); }
+
+/* Switch component */
+[role="switch"] {
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--muted-foreground));
+}
+
+[role="switch"][data-state="checked"] {
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+}
+
+/* Switch thumb */
+[role="switch"] .thumb {
+  background-color: hsl(var(--background));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.dark [role="switch"] .thumb {
+  background-color: hsl(var(--background));
+}
+
+/* Focus styles */
+[role="switch"]:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
 }

@@ -92,41 +92,51 @@ const TodoList = () => {
   const getPriorityColor = (priority) => {
     switch (priority) {
       case "high":
-        return "text-rose-500"
+        return "text-priority-high"
       case "medium":
-        return "text-amber-500"
+        return "text-priority-medium"
       case "low":
-        return "text-emerald-500"
+        return "text-priority-low"
       default:
-        return "text-slate-500"
+        return "text-muted-foreground"
+    }
+  }
+
+  const getCategoryColor = (category) => {
+    switch (category) {
+      case "work":
+        return "bg-category-work"
+      case "personal":
+        return "bg-category-personal"
+      case "learning":
+        return "bg-category-learning"
+      default:
+        return "bg-muted"
     }
   }
 
   const filteredTasks = activeTab === "all" ? tasks : tasks.filter((task) => task.category === activeTab)
 
   const sortedTasks = [...filteredTasks].sort((a, b) => {
-    // Sort by completion status first
     if (a.completed !== b.completed) {
       return a.completed ? 1 : -1
     }
-
-    // Then by priority
     const priorityOrder = { high: 0, medium: 1, low: 2 }
     return priorityOrder[a.priority] - priorityOrder[b.priority]
   })
 
   return (
-    <div className="p-6 h-full">
+    <div className="p-6 h-full bg-background">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">To-Do List</h1>
-          <p className="text-slate-500">Manage your personal and work tasks</p>
+          <h1 className="text-2xl font-bold text-foreground">To-Do List</h1>
+          <p className="text-muted-foreground">Manage your personal and work tasks</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="border-border text-foreground hover:bg-muted">
             <Filter size={14} className="mr-1" /> Filter
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="border-border text-foreground hover:bg-muted">
             <ArrowUpDown size={14} className="mr-1" /> Sort
           </Button>
         </div>
@@ -134,14 +144,14 @@ const TodoList = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100%-80px)]">
         <div className="lg:col-span-2">
-          <Card className="h-full">
+          <Card className="h-full bg-background border-border">
             <CardHeader className="pb-2">
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList>
-                  <TabsTrigger value="all">All</TabsTrigger>
-                  <TabsTrigger value="work">Work</TabsTrigger>
-                  <TabsTrigger value="personal">Personal</TabsTrigger>
-                  <TabsTrigger value="learning">Learning</TabsTrigger>
+                <TabsList className="bg-muted">
+                  <TabsTrigger value="all" className="data-[state=active]:bg-background">All</TabsTrigger>
+                  <TabsTrigger value="work" className="data-[state=active]:bg-background">Work</TabsTrigger>
+                  <TabsTrigger value="personal" className="data-[state=active]:bg-background">Personal</TabsTrigger>
+                  <TabsTrigger value="learning" className="data-[state=active]:bg-background">Learning</TabsTrigger>
                 </TabsList>
               </Tabs>
             </CardHeader>
@@ -156,15 +166,16 @@ const TodoList = () => {
                       addTask()
                     }
                   }}
+                  className="border-border bg-background text-foreground placeholder:text-muted-foreground"
                 />
-                <Button onClick={addTask} className="bg-teal-600 hover:bg-teal-700">
+                <Button onClick={addTask} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                   <Plus size={16} />
                 </Button>
               </div>
 
               <div className="space-y-2 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
                 {sortedTasks.length === 0 ? (
-                  <div className="text-center py-8 text-slate-500">
+                  <div className="text-center py-8 text-muted-foreground">
                     <p>No tasks found. Add a new task to get started!</p>
                   </div>
                 ) : (
@@ -175,8 +186,8 @@ const TodoList = () => {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05 }}
                       className={`flex items-center justify-between p-3 rounded-md ${
-                        task.completed ? "bg-slate-50 text-slate-400" : "bg-white"
-                      } border border-slate-200 hover:shadow-sm transition-shadow`}
+                        task.completed ? "bg-muted text-muted-foreground" : "bg-background"
+                      } border border-border hover:shadow-sm transition-shadow`}
                     >
                       <div className="flex items-center gap-3">
                         <Checkbox
@@ -185,9 +196,9 @@ const TodoList = () => {
                           className={task.completed ? "opacity-50" : ""}
                         />
                         <div className={task.completed ? "line-through" : ""}>
-                          <p className="text-sm font-medium">{task.title}</p>
+                          <p className="text-sm font-medium text-foreground">{task.title}</p>
                           {task.dueDate && (
-                            <div className="flex items-center text-xs text-slate-500 mt-1">
+                            <div className="flex items-center text-xs text-muted-foreground mt-1">
                               <Calendar size={12} className="mr-1" />
                               {new Date(task.dueDate).toLocaleDateString("en-US", {
                                 month: "short",
@@ -206,16 +217,16 @@ const TodoList = () => {
                         />
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-muted">
                               <MoreHorizontal size={16} />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem className="flex items-center gap-2">
+                          <DropdownMenuContent align="end" className="bg-background border-border">
+                            <DropdownMenuItem className="flex items-center gap-2 text-foreground hover:bg-muted">
                               <Edit size={14} /> Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              className="flex items-center gap-2 text-rose-500"
+                              className="flex items-center gap-2 text-destructive hover:bg-muted"
                               onClick={() => deleteTask(task.id)}
                             >
                               <Trash2 size={14} /> Delete
@@ -232,47 +243,39 @@ const TodoList = () => {
         </div>
 
         <div>
-          <Card className="h-full">
+          <Card className="h-full bg-background border-border">
             <CardHeader>
-              <CardTitle>Task Summary</CardTitle>
-              <CardDescription>Overview of your tasks</CardDescription>
+              <CardTitle className="text-foreground">Task Summary</CardTitle>
+              <CardDescription className="text-muted-foreground">Overview of your tasks</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-sm font-medium mb-2">Task Status</h3>
-                  <div className="bg-slate-100 rounded-full h-4 overflow-hidden">
+                  <h3 className="text-sm font-medium text-foreground mb-2">Task Status</h3>
+                  <div className="bg-muted rounded-full h-4 overflow-hidden">
                     <div
-                      className="bg-teal-500 h-full"
+                      className="bg-primary h-full"
                       style={{ width: `${(tasks.filter((t) => t.completed).length / tasks.length) * 100}%` }}
                     ></div>
                   </div>
-                  <div className="flex justify-between mt-2 text-xs text-slate-500">
+                  <div className="flex justify-between mt-2 text-xs text-muted-foreground">
                     <span>{tasks.filter((t) => t.completed).length} completed</span>
                     <span>{tasks.filter((t) => !t.completed).length} remaining</span>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-medium mb-2">Categories</h3>
+                  <h3 className="text-sm font-medium text-foreground mb-2">Categories</h3>
                   <div className="space-y-2">
                     {["work", "personal", "learning"].map((category) => {
                       const count = tasks.filter((t) => t.category === category).length
                       return (
                         <div key={category} className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
-                            <div
-                              className={`w-2 h-2 rounded-full ${
-                                category === "work"
-                                  ? "bg-teal-500"
-                                  : category === "personal"
-                                    ? "bg-purple-500"
-                                    : "bg-sky-500"
-                              }`}
-                            ></div>
-                            <span className="text-sm capitalize">{category}</span>
+                            <div className={`w-2 h-2 rounded-full ${getCategoryColor(category)}`}></div>
+                            <span className="text-sm text-foreground capitalize">{category}</span>
                           </div>
-                          <Badge variant="outline">{count}</Badge>
+                          <Badge variant="outline" className="bg-muted text-foreground">{count}</Badge>
                         </div>
                       )
                     })}
@@ -280,7 +283,7 @@ const TodoList = () => {
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-medium mb-2">Priority</h3>
+                  <h3 className="text-sm font-medium text-foreground mb-2">Priority</h3>
                   <div className="space-y-2">
                     {["high", "medium", "low"].map((priority) => {
                       const count = tasks.filter((t) => t.priority === priority).length
@@ -288,9 +291,9 @@ const TodoList = () => {
                         <div key={priority} className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
                             <Star size={14} className={getPriorityColor(priority)} />
-                            <span className="text-sm capitalize">{priority}</span>
+                            <span className="text-sm text-foreground capitalize">{priority}</span>
                           </div>
-                          <Badge variant="outline">{count}</Badge>
+                          <Badge variant="outline" className="bg-muted text-foreground">{count}</Badge>
                         </div>
                       )
                     })}
@@ -298,7 +301,7 @@ const TodoList = () => {
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-medium mb-2">Upcoming</h3>
+                  <h3 className="text-sm font-medium text-foreground mb-2">Upcoming</h3>
                   <div className="space-y-2">
                     {tasks
                       .filter((t) => !t.completed && t.dueDate)
@@ -307,10 +310,10 @@ const TodoList = () => {
                       .map((task) => (
                         <div
                           key={task.id}
-                          className="flex justify-between items-center p-2 rounded-md hover:bg-slate-50"
+                          className="flex justify-between items-center p-2 rounded-md hover:bg-muted"
                         >
-                          <span className="text-sm truncate max-w-[180px]">{task.title}</span>
-                          <div className="text-xs text-slate-500">
+                          <span className="text-sm text-foreground truncate max-w-[180px]">{task.title}</span>
+                          <div className="text-xs text-muted-foreground">
                             {new Date(task.dueDate).toLocaleDateString("en-US", {
                               month: "short",
                               day: "numeric",
