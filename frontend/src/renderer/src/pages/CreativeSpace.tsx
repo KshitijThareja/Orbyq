@@ -176,10 +176,10 @@ const CreativeSpace = () => {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="h-[calc(100%-80px)]">
         <div className="flex justify-between items-center mb-4">
-          <TabsList className="bg-muted">
-            <TabsTrigger value="canvas" className="data-[state=active]:bg-background">Canvas</TabsTrigger>
-            <TabsTrigger value="documents" className="data-[state=active]:bg-background">Documents</TabsTrigger>
-            <TabsTrigger value="moodboard" className="data-[state=active]:bg-background">Mood Board</TabsTrigger>
+          <TabsList className="tabs-list">
+            <TabsTrigger value="canvas" className="tabs-trigger text-foreground">Canvas</TabsTrigger>
+            <TabsTrigger value="documents" className="tabs-trigger text-foreground">Documents</TabsTrigger>
+            <TabsTrigger value="moodboard" className="tabs-trigger text-foreground">Mood Board</TabsTrigger>
           </TabsList>
 
           <div className="flex gap-2">

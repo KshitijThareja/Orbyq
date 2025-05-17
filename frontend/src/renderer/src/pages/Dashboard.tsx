@@ -45,7 +45,7 @@ const Dashboard = () => {
             <CardContent>
               <div className="flex justify-between items-center">
                 <span className="text-2xl font-bold text-foreground">12/20</span>
-                <ListTodo className="text-category-work" size={24} />
+                <ListTodo className="text-category-work dark:text-white" size={24} />
               </div>
               <Progress value={60} className="h-2 mt-2" />
             </CardContent>
@@ -58,7 +58,7 @@ const Dashboard = () => {
             <CardContent>
               <div className="flex justify-between items-center">
                 <span className="text-2xl font-bold text-foreground">4</span>
-                <Kanban className="text-category-personal" size={24} />
+                <Kanban className="text-category-personal dark:text-white" size={24} />
               </div>
               <div className="flex gap-2 mt-2">
                 <div className="h-2 rounded-full bg-muted flex-1">

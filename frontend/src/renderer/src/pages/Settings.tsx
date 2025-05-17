@@ -42,17 +42,17 @@ const SettingsSidebar = ({ activeTab, setActiveTab }) => {
       <CardContent className="p-3">
         <nav aria-label="Settings navigation">
           <Tabs orientation="vertical" value={activeTab} onValueChange={setActiveTab} className="h-full mt-6">
-            <TabsList className="flex flex-col items-start h-auto bg-transparent space-y-1 w-full">
+            <TabsList className="flex flex-col items-start h-auto tabs-list space-y-1 w-full">
               {navItems.map((item) => {
                 const Icon = item.icon
                 return (
                   <TabsTrigger
                     key={item.id}
                     value={item.id}
-                    className="w-full justify-start py-2.5 px-3 rounded-md data-[state=active]:bg-muted text-foreground hover:bg-muted transition-colors"
+                    className="w-full justify-start py-2.5 px-3 rounded-md tabs-trigger text-foreground transition-colors"
                     aria-label={`${item.label} settings tab`}
                   >
-                    <Icon size={18} className="mr-2 text-muted-foreground" aria-hidden="true" />
+                    <Icon size={18} className="mr-2 text-foreground" aria-hidden="true" />
                     <span>{item.label}</span>
                   </TabsTrigger>
                 )

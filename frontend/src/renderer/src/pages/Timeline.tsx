@@ -108,7 +108,7 @@ const Timeline = () => {
                   <ChevronRight size={16} />
                 </Button>
               </div>
-              <Button variant="outline" size="sm" className="border-border text-foreground hover:bg-muted">
+              <Button variant="outline" size="sm" className="border-border text-foreground hover:bg-muted mr-3">
                 <Calendar size={14} className="mr-1" /> Today
               </Button>
             </div>
