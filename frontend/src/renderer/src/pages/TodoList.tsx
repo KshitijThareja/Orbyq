@@ -147,11 +147,11 @@ const TodoList = () => {
           <Card className="h-full bg-background border-border">
             <CardHeader className="pb-2">
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="bg-muted">
-                  <TabsTrigger value="all" className="data-[state=active]:bg-background">All</TabsTrigger>
-                  <TabsTrigger value="work" className="data-[state=active]:bg-background">Work</TabsTrigger>
-                  <TabsTrigger value="personal" className="data-[state=active]:bg-background">Personal</TabsTrigger>
-                  <TabsTrigger value="learning" className="data-[state=active]:bg-background">Learning</TabsTrigger>
+                <TabsList className="tabs-list">
+                  <TabsTrigger value="all" className="tabs-trigger text-foreground">All</TabsTrigger>
+                  <TabsTrigger value="work" className="tabs-trigger text-foreground">Work</TabsTrigger>
+                  <TabsTrigger value="personal" className="tabs-trigger text-foreground">Personal</TabsTrigger>
+                  <TabsTrigger value="learning" className="tabs-trigger text-foreground">Learning</TabsTrigger>
                 </TabsList>
               </Tabs>
             </CardHeader>
@@ -193,7 +193,7 @@ const TodoList = () => {
                         <Checkbox
                           checked={task.completed}
                           onCheckedChange={() => toggleTaskCompletion(task.id)}
-                          className={task.completed ? "opacity-50" : ""}
+                          className={task.completed ? "opacity-50 checkbox" : "checkbox"}
                         />
                         <div className={task.completed ? "line-through" : ""}>
                           <p className="text-sm font-medium text-foreground">{task.title}</p>

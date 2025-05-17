@@ -2,7 +2,7 @@ import type { Config } from "tailwindcss"
 import animate from "tailwindcss-animate"
 
 const config: Config = {
-  content: ["./src/renderer/src/**/*.{js,ts,jsx,tsx}", "*.{js,ts,jsx,tsx,mdx}", "./src/renderer/src/*.{js,ts,jsx,tsx}", "./src/renderer/src/components/*.{js,ts,jsx,tsx}"],
+  content: ["./src/renderer/src/**/*.{js,ts,jsx,tsx}", "*.{js,ts,jsx,tsx,mdx}", "./src/renderer/src/*.{js,ts,jsx,tsx}", "./src/renderer/src/components/*.{js,ts,jsx,tsx}", "./src/renderer/src/components/ui/*.{js,ts,jsx,tsx}"],
   prefix: "",
   darkMode: "class",
   theme: {

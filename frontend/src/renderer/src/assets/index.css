@@ -97,6 +97,8 @@
 .border-destructive { border-color: hsl(var(--destructive)); }
 .bg-muted { background-color: hsl(var(--muted)); }
 .bg-accent { background-color: hsl(var(--accent)); }
+.bg-destructive { background-color: hsl(var(--destructive)); }
+.text-destructive { color: hsl(var(--destructive)); }
 .ring-primary { --tw-ring-color: hsl(var(--ring)); }
 .hover\:bg-primary\/90:hover { background-color: hsl(var(--primary) / 0.9); }
 .hover\:bg-muted:hover { background-color: hsl(var(--muted)); }
@@ -136,4 +138,33 @@
 [role="switch"]:focus-visible {
   outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
+}
+
+/* Tabs component */
+.tabs-list {
+  background-color: hsl(var(--muted));
+}
+
+.tabs-trigger {
+  background-color: hsl(var(--muted));
+}
+
+.tabs-trigger[data-state="active"] {
+  background-color: hsl(var(--primary));
+}
+
+/* Checkbox component */
+.checkbox {
+  background-color: hsl(var(--muted));
+  border-color: hsl(var(--primary));
+}
+
+.checkbox-indicator {
+  background-color: hsl(var(--background));
+  border-color: hsl(var(--border));
+}
+
+.checkbox-indicator[data-state="checked"] {
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--border));
 }
