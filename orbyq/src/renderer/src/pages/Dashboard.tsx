@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar, CheckCircle2, Clock, ListTodo, Lightbulb, Kanban } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
@@ -27,6 +27,38 @@ const Dashboard = () => {
   const item = {
     hidden: { y: 20, opacity: 0 },
     show: { y: 0, opacity: 1 },
+  }
+
+  const [backendResponse, setBackendResponse] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchPing = async (attempt = 1, maxAttempts = 5, interval = 2000) => {
+    try {
+      const data = await (window.api as any).callBackend('ping');
+      setBackendResponse(data);
+      setIsLoading(false);
+    } catch (err) {
+      console.error(`Attempt ${attempt} failed:`, err);
+      if (attempt < maxAttempts) {
+        setTimeout(() => fetchPing(attempt + 1, maxAttempts, interval), interval);
+      } else {
+        setError('Failed to connect to backend');
+        setIsLoading(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchPing();
+  }, []);
+
+  if (isLoading) {
+    return <div className="p-4">Loading backend...</div>;
+  }
+
+  if (error) {
+    return <div className="p-4 text-red-500">{error}</div>;
   }
 
   return (
