@@ -409,11 +409,6 @@ const AppearanceSettings = () => {
     >
       <div className={`w-full h-12 rounded-md mb-2 ${color}`}></div>
       <p className="text-xs text-center font-medium text-foreground capitalize">{label}</p>
-      {colorScheme === id && (
-        <div className="absolute top-2 right-2 bg-primary text-primary-foreground w-5 h-5 flex items-center justify-center rounded-full">
-          <Check size={12} />
-        </div>
-      )}
     </div>
   )
 

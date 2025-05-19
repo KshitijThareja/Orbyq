@@ -4,11 +4,13 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils';
 import icon from '../../resources/icon.png?asset';
 import { spawn, ChildProcess } from 'child_process';
 import axios from 'axios';
+import ElectronStore from 'electron-store';
 
 let backendProcess: ChildProcess | null = null;
 let isBackendReady = false;
+ElectronStore.initRenderer();
 
-async function waitForBackend(maxAttempts = 10, interval = 1000): Promise<void> {
+async function waitForBackend(maxAttempts = 20, interval = 1000): Promise<void> {
   if (isBackendReady) return;
 
   const baseUrl = 'http://localhost:8080/api';
@@ -20,11 +22,13 @@ async function waitForBackend(maxAttempts = 10, interval = 1000): Promise<void> 
       isBackendReady = true;
       return;
     } catch (error) {
-      if (error instanceof Error) {
-        console.log(`Backend not ready yet: ${error.message}`);
-      } else {
-        console.log('Backend not ready yet: Unknown error');
-      }
+      console.log(
+        `Backend not ready yet: ${
+          typeof error === 'object' && error !== null && 'message' in error
+            ? (error as any).message
+            : String(error)
+        }`
+      );
       if (attempt === maxAttempts) {
         throw new Error('Backend failed to start after maximum attempts');
       }
@@ -98,18 +102,20 @@ app.whenReady().then(async () => {
     console.error('Failed to initialize backend:', error);
   }
 
-  ipcMain.handle('call-backend', async (_, { endpoint, method, data }) => {
+  ipcMain.handle('call-backend', async (_, { endpoint, method, data, token }) => {
     console.log(`Calling backend: ${endpoint}, method: ${method}`);
     const baseUrl = 'http://localhost:8080/api';
     try {
       await waitForBackend();
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const response = await axios({
         method,
         url: `${baseUrl}/${endpoint}`,
         data,
+        headers,
         timeout: 5000
       });
-      console.log(`Backend response: ${response.data}`);
+      console.log(`Backend response: ${JSON.stringify(response.data)}`);
       return response.data;
     } catch (error) {
       console.error('Backend call error:', error);
@@ -119,14 +125,10 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('get-backend-status', async () => {
     try {
-      await waitForBackend(1, 500); // Single quick check
+      await waitForBackend(1, 500);
       return { ready: true };
     } catch (error) {
-      if (error instanceof Error) {
-        return { ready: false, error: error.message };
-      } else {
-        return { ready: false, error: 'Unknown error' };
-      }
+      return { ready: false, error: typeof error === 'object' && error !== null && 'message' in error ? (error as any).message : String(error) };
     }
   });
 
