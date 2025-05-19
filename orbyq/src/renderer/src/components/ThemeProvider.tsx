@@ -62,10 +62,8 @@ export function ThemeProvider({
   }, [theme])
 
   useEffect(() => {
-    // Apply color scheme
     document.documentElement.setAttribute("data-color-scheme", colorScheme)
 
-    // Update CSS variables based on color scheme
     const root = document.documentElement
     let primaryColor = ""
 

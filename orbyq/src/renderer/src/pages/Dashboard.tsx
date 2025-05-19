@@ -5,14 +5,45 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Calendar, CheckCircle2, Clock, ListTodo, Lightbulb, Kanban } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { motion } from "framer-motion"
+import { useAuth } from '../context/AuthContext'
 
 const Dashboard = () => {
+  const { callBackend } = useAuth()
   const [greeting] = useState(() => {
     const hour = new Date().getHours()
     if (hour < 12) return "Good morning"
     if (hour < 18) return "Good afternoon"
     return "Good evening"
   })
+
+  //@ts-ignore
+  const [backendResponse, setBackendResponse] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchPing = async (attempt = 1, maxAttempts = 5, interval = 2000) => {
+    try {
+      const status = await (window.api as any).getBackendStatus()
+      if (!status.ready) {
+        throw new Error(status.error || 'Backend not ready')
+      }
+      const data = await callBackend<string>('ping')
+      setBackendResponse(data)
+      setIsLoading(false)
+    } catch (err: any) {
+      console.error(`Attempt ${attempt} failed:`, err)
+      if (attempt < maxAttempts) {
+        setTimeout(() => fetchPing(attempt + 1, maxAttempts, interval), interval)
+      } else {
+        setError('Failed to connect to backend')
+        setIsLoading(false)
+      }
+    }
+  }
+
+  useEffect(() => {
+    fetchPing()
+  }, [])
 
   const container = {
     hidden: { opacity: 0 },
@@ -29,44 +60,22 @@ const Dashboard = () => {
     show: { y: 0, opacity: 1 },
   }
 
-  const [backendResponse, setBackendResponse] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchPing = async (attempt = 1, maxAttempts = 5, interval = 2000) => {
-    try {
-      const data = await (window.api as any).callBackend('ping');
-      setBackendResponse(data);
-      setIsLoading(false);
-    } catch (err) {
-      console.error(`Attempt ${attempt} failed:`, err);
-      if (attempt < maxAttempts) {
-        setTimeout(() => fetchPing(attempt + 1, maxAttempts, interval), interval);
-      } else {
-        setError('Failed to connect to backend');
-        setIsLoading(false);
-      }
-    }
-  };
-
-  useEffect(() => {
-    fetchPing();
-  }, []);
-
   if (isLoading) {
-    return <div className="p-4">Loading backend...</div>;
+    return <div className="p-4">Loading backend...</div>
   }
 
   if (error) {
-    return <div className="p-4 text-red-500">{error}</div>;
+    return <div className="p-4 text-destructive">{error}</div>
   }
 
   return (
     <div className="p-6 max-w-7xl mx-auto bg-background">
       <motion.div className="flex flex-col gap-6" variants={container} initial="hidden" animate="show">
-        <motion.div variants={item}>
-          <h1 className="text-3xl font-bold text-foreground">{greeting}, Alex</h1>
-          <p className="text-muted-foreground mt-1">Here's an overview of your workspace</p>
+        <motion.div variants={item} className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">{greeting}, Alex</h1>
+            <p className="text-muted-foreground mt-1">Here's an overview of your workspace</p>
+          </div>
         </motion.div>
 
         <motion.div variants={item} className="grid grid-cols-1 md:grid-cols-3 gap-4">

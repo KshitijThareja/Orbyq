@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { motion } from "framer-motion"
 
-// Initial data for the board
 const initialData = {
   columns: {
     "column-1": {
