@@ -10,6 +10,7 @@ import { motion, useReducedMotion, Variants } from 'framer-motion';
 function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const { register, isValidating } = useAuth();
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ function Register() {
     e.preventDefault();
     setError(null);
     try {
-      await register(email, password);
+      await register(email, password, name);
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Registration failed');
@@ -94,6 +95,17 @@ function Register() {
         <CardContent>
           {error && <p className="text-destructive mb-4">{error}</p>}
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-foreground">Name</Label>
+              <Input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="bg-background border-border text-foreground"
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email" className="text-foreground">Email</Label>
               <Input

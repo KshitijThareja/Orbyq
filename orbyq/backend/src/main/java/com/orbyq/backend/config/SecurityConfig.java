@@ -41,7 +41,7 @@ public class SecurityConfig {
                 }))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/api/ping", "/api/auth/login", "/api/auth/register", "/api/auth/validate", "/api/auth/refresh").permitAll()
+                        .requestMatchers("/api/auth/**", "/api/ping", "/api/auth/login", "/api/auth/register", "/api/auth/validate", "/api/auth/refresh", "/api/dashboard/**", "/api/dashboard/ping").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JwtAuthenticationFilter(jwtUtil, userDetailsService),
