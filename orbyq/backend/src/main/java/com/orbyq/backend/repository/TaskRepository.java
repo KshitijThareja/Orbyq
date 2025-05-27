@@ -13,4 +13,5 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
     List<Task> findByUserAndCompleted(User user, boolean completed);
     List<Task> findByUserAndDueDateBetween(User user, LocalDate start, LocalDate end);
     List<Task> findByProject(Project project);
+    List<Task> findByUserAndStatus(User user, Task.Status status);
 }
