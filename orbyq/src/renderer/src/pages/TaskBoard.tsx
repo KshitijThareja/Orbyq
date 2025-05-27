@@ -3,13 +3,14 @@
 import { useState, useEffect, useCallback } from "react"
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { MoreHorizontal, Plus, Clock, MessageSquare, Paperclip } from "lucide-react"
+import { MoreHorizontal, Plus, Clock, MessageSquare, Paperclip, Edit, Trash } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { motion } from "framer-motion"
 import { useAuth } from '../context/AuthContext'
 import * as Dialog from '@radix-ui/react-dialog'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -40,10 +41,12 @@ const TaskBoard = () => {
   const { callBackend } = useAuth();
   const [boardData, setBoardData] = useState<TaskBoardData | null>(null);
   const [originalBoardData, setOriginalBoardData] = useState<TaskBoardData | null>(null);
+  const [taskDisplayNumbers, setTaskDisplayNumbers] = useState<{ [key: string]: number }>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterPriority, setFilterPriority] = useState<string>("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [newTask, setNewTask] = useState({
     title: "",
     description: "",
@@ -51,6 +54,14 @@ const TaskBoard = () => {
     dueDate: "",
     status: "TODO"
   });
+  const [editingTask, setEditingTask] = useState<{
+    id: string;
+    title: string;
+    description: string;
+    priority: string;
+    dueDate: string;
+    status: string;
+  } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   const fetchBoardData = async () => {
@@ -59,6 +70,15 @@ const TaskBoard = () => {
       console.log('Fetched boardData:', data);
       setBoardData(data);
       setOriginalBoardData(data);
+
+      // Generate display numbers for tasks
+      const taskIds = Object.keys(data.tasks);
+      const displayNumbers: { [key: string]: number } = {};
+      taskIds.forEach((taskId, index) => {
+        displayNumbers[taskId] = index + 1; // Task 1, Task 2, etc.
+      });
+      setTaskDisplayNumbers(displayNumbers);
+
       setIsLoading(false);
     } catch (err: any) {
       setError('Failed to load task board');
@@ -164,6 +184,33 @@ const TaskBoard = () => {
       fetchBoardData();
     } catch (err) {
       setError('Failed to create task');
+    }
+  };
+
+  const handleEditTask = async () => {
+    if (!editingTask) return;
+    try {
+      await callBackend<void>(`taskboard/${editingTask.id}`, 'PUT', {
+        title: editingTask.title,
+        description: editingTask.description,
+        priority: editingTask.priority,
+        dueDate: editingTask.dueDate,
+        status: editingTask.status,
+      });
+      setIsEditDialogOpen(false);
+      setEditingTask(null);
+      fetchBoardData();
+    } catch (err) {
+      setError('Failed to update task');
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      await callBackend<void>(`taskboard/${taskId}`, 'DELETE');
+      fetchBoardData();
+    } catch (err) {
+      setError('Failed to delete task');
     }
   };
 
@@ -306,6 +353,86 @@ const TaskBoard = () => {
         </div>
       </div>
 
+      <Dialog.Root open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/50" />
+          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background p-6 rounded-lg border border-border w-full max-w-md">
+            <Dialog.Title className="text-lg font-medium text-foreground">Edit Task</Dialog.Title>
+            {editingTask && (
+              <div className="space-y-4 mt-4">
+                <div>
+                  <Label htmlFor="edit-title" className="text-muted-foreground">Title</Label>
+                  <Input
+                    id="edit-title"
+                    value={editingTask.title}
+                    onChange={e => setEditingTask({ ...editingTask, title: e.target.value })}
+                    className="border-border text-foreground"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-description" className="text-muted-foreground">Description</Label>
+                  <Input
+                    id="edit-description"
+                    value={editingTask.description}
+                    onChange={e => setEditingTask({ ...editingTask, description: e.target.value })}
+                    className="border-border text-foreground"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-priority" className="text-muted-foreground">Priority</Label>
+                  <Select
+                    onValueChange={value => setEditingTask({ ...editingTask, priority: value })}
+                    defaultValue={editingTask.priority}
+                  >
+                    <SelectTrigger className="border-border text-foreground">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="low">Low</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="edit-dueDate" className="text-muted-foreground">Due Date</Label>
+                  <Input
+                    id="edit-dueDate"
+                    type="date"
+                    value={editingTask.dueDate}
+                    onChange={e => setEditingTask({ ...editingTask, dueDate: e.target.value })}
+                    className="border-border text-foreground"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-status" className="text-muted-foreground">Status</Label>
+                  <Select
+                    onValueChange={value => setEditingTask({ ...editingTask, status: value })}
+                    defaultValue={editingTask.status}
+                  >
+                    <SelectTrigger className="border-border text-foreground">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="TODO">To Do</SelectItem>
+                      <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                      <SelectItem value="REVIEW">Review</SelectItem>
+                      <SelectItem value="DONE">Done</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+            <div className="flex justify-end gap-2 mt-6">
+              <Dialog.Close asChild>
+                <Button variant="outline" className="border-border text-foreground hover:bg-muted">Cancel</Button>
+              </Dialog.Close>
+              <Button onClick={handleEditTask} className="bg-primary hover:bg-primary/90 text-primary-foreground">Save Changes</Button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
       <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 h-[calc(100%-80px)]">
           {boardData.columnOrder.map((columnId, index) => {
@@ -376,9 +503,41 @@ const TaskBoard = () => {
                                       <div className={`w-2 h-2 rounded-full ${getPriorityColor(task.priority)}`}></div>
                                       <CardTitle className="text-sm font-medium text-foreground">{task.title}</CardTitle>
                                     </div>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:bg-muted">
-                                      <MoreHorizontal size={14} />
-                                    </Button>
+                                    <DropdownMenu.Root>
+                                      <DropdownMenu.Trigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:bg-muted">
+                                          <MoreHorizontal size={14} />
+                                        </Button>
+                                      </DropdownMenu.Trigger>
+                                      <DropdownMenu.Portal>
+                                        <DropdownMenu.Content className="bg-background border border-border rounded-md shadow-lg p-1">
+                                          <DropdownMenu.Item
+                                            className="flex items-center gap-2 px-3 py-1 text-sm text-foreground hover:bg-muted cursor-pointer rounded-sm"
+                                            onSelect={() => {
+                                              setEditingTask({
+                                                id: task.id,
+                                                title: task.title,
+                                                description: task.description,
+                                                priority: task.priority,
+                                                dueDate: task.dueDate,
+                                                status: column.id === "column-1" ? "TODO" : column.id === "column-2" ? "IN_PROGRESS" : column.id === "column-3" ? "REVIEW" : "DONE",
+                                              });
+                                              setIsEditDialogOpen(true);
+                                            }}
+                                          >
+                                            <Edit size={14} />
+                                            Edit Task
+                                          </DropdownMenu.Item>
+                                          <DropdownMenu.Item
+                                            className="flex items-center gap-2 px-3 py-1 text-sm text-destructive hover:bg-muted cursor-pointer rounded-sm"
+                                            onSelect={() => handleDeleteTask(task.id)}
+                                          >
+                                            <Trash size={14} />
+                                            Delete Task
+                                          </DropdownMenu.Item>
+                                        </DropdownMenu.Content>
+                                      </DropdownMenu.Portal>
+                                    </DropdownMenu.Root>
                                   </div>
                                 </CardHeader>
                                 <CardContent className="p-3 pt-2">
@@ -406,7 +565,9 @@ const TaskBoard = () => {
                                     </div>
                                     <Avatar className="h-6 w-6">
                                       <AvatarImage src="/placeholder.svg?height=24&width=24" />
-                                      <AvatarFallback className="text-[10px] bg-muted text-foreground">{task.id.split("-")[1]}</AvatarFallback>
+                                      <AvatarFallback className="text-[10px] bg-muted text-foreground">
+                                        {taskDisplayNumbers[task.id] ? `T${taskDisplayNumbers[task.id]}` : task.id.split("-")[0]}
+                                      </AvatarFallback>
                                     </Avatar>
                                   </div>
                                 </CardFooter>

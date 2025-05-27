@@ -1,6 +1,5 @@
 package com.orbyq.backend.dto;
 
-import java.time.LocalDate;
 import java.util.Map;
 
 public class TaskBoardDTO {
@@ -12,6 +11,8 @@ public class TaskBoardDTO {
         private String id;
         private String title;
         private String[] taskIds;
+
+        public ColumnDTO() {}
 
         public ColumnDTO(String id, String title, String[] taskIds) {
             this.id = id;
@@ -32,16 +33,20 @@ public class TaskBoardDTO {
         private String title;
         private String description;
         private String priority;
-        private LocalDate dueDate;
+        private String dueDate; // Changed to String to match frontend
+        private String status;  // Added status field
         private int comments;
         private int attachments;
 
-        public TaskDTO(String id, String title, String description, String priority, LocalDate dueDate, int comments, int attachments) {
+        public TaskDTO() {}
+
+        public TaskDTO(String id, String title, String description, String priority, String dueDate, String status, int comments, int attachments) {
             this.id = id;
             this.title = title;
             this.description = description;
             this.priority = priority;
             this.dueDate = dueDate;
+            this.status = status;
             this.comments = comments;
             this.attachments = attachments;
         }
@@ -54,13 +59,17 @@ public class TaskBoardDTO {
         public void setDescription(String description) { this.description = description; }
         public String getPriority() { return priority; }
         public void setPriority(String priority) { this.priority = priority; }
-        public LocalDate getDueDate() { return dueDate; }
-        public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
+        public String getDueDate() { return dueDate; }
+        public void setDueDate(String dueDate) { this.dueDate = dueDate; }
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
         public int getComments() { return comments; }
         public void setComments(int comments) { this.comments = comments; }
         public int getAttachments() { return attachments; }
         public void setAttachments(int attachments) { this.attachments = attachments; }
     }
+
+    public TaskBoardDTO() {}
 
     public Map<String, ColumnDTO> getColumns() { return columns; }
     public void setColumns(Map<String, ColumnDTO> columns) { this.columns = columns; }

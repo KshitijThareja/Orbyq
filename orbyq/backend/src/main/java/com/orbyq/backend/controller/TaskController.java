@@ -42,6 +42,35 @@ public class TaskController {
         return ResponseEntity.ok(task);
     }
 
+    @PutMapping("/{taskId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> updateTask(
+        @AuthenticationPrincipal UserDetails userDetails,
+        @PathVariable String taskId,
+        @RequestBody Map<String, String> request
+    ) {
+        taskService.updateTask(
+            userDetails.getUsername(),
+            taskId,
+            request.get("title"),
+            request.get("description"),
+            request.get("priority"),
+            LocalDate.parse(request.get("dueDate")),
+            request.get("status")
+        );
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{taskId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> deleteTask(
+        @AuthenticationPrincipal UserDetails userDetails,
+        @PathVariable String taskId
+    ) {
+        taskService.deleteTask(userDetails.getUsername(), taskId);
+        return ResponseEntity.ok().build();
+    }
+
     @PatchMapping("/{taskId}/status")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> updateTaskStatus(

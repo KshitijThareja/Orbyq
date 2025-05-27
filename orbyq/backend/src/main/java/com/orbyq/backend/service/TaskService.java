@@ -6,122 +6,156 @@ import com.orbyq.backend.model.User;
 import com.orbyq.backend.repository.TaskRepository;
 import com.orbyq.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 public class TaskService {
+
     @Autowired
     private TaskRepository taskRepository;
+
     @Autowired
     private UserRepository userRepository;
 
-    public TaskBoardDTO getTaskBoard(String email) {
-        Optional<User> userOpt = userRepository.findByEmail(email);
-        if (userOpt.isEmpty()) {
-            throw new RuntimeException("User not found");
-        }
-        User user = userOpt.get();
+    public TaskBoardDTO getTaskBoard(String username) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        // Fetch tasks by status
-        Map<Task.Status, List<Task>> tasksByStatus = new EnumMap<>(Task.Status.class);
-        for (Task.Status status : Task.Status.values()) {
-            tasksByStatus.put(status, taskRepository.findByUserAndStatus(user, status));
-        }
-
-        // Build tasks map
-        Map<String, TaskBoardDTO.TaskDTO> tasksMap = new HashMap<>();
-        tasksByStatus.values().forEach(tasks -> tasks.forEach(task -> {
-            tasksMap.put(task.getId().toString(), new TaskBoardDTO.TaskDTO(
+        List<Task> tasks = taskRepository.findByUser(user);
+        Map<String, TaskBoardDTO.TaskDTO> taskMap = new HashMap<>();
+        for (Task task : tasks) {
+            TaskBoardDTO.TaskDTO taskDTO = new TaskBoardDTO.TaskDTO(
                 task.getId().toString(),
                 task.getTitle(),
                 task.getDescription(),
-                task.getPriority().name().toLowerCase(),
-                task.getDueDate(),
+                task.getPriority().toString().toLowerCase(),
+                task.getDueDate().toString(),
+                task.getStatus().toString(),
                 task.getComments(),
                 task.getAttachments()
-            ));
-        }));
+            );
+            taskMap.put(task.getId().toString(), taskDTO);
+        }
 
-        // Build columns
-        Map<String, TaskBoardDTO.ColumnDTO> columns = new LinkedHashMap<>();
-        String[] columnOrder = new String[4];
-        int index = 0;
+        Map<String, TaskBoardDTO.ColumnDTO> columns = new HashMap<>();
+        String[] columnOrder = new String[]{"column-1", "column-2", "column-3", "column-4"};
 
-        // Column: To Do
-        List<String> todoTaskIds = tasksByStatus.get(Task.Status.TODO).stream()
-            .map(task -> task.getId().toString()).collect(Collectors.toList());
-        columns.put("column-1", new TaskBoardDTO.ColumnDTO("column-1", "To Do", todoTaskIds.toArray(new String[0])));
-        columnOrder[index++] = "column-1";
+        Map<Task.Status, List<String>> tasksByStatus = tasks.stream()
+                .collect(Collectors.groupingBy(
+                        Task::getStatus,
+                        Collectors.mapping(task -> task.getId().toString(), Collectors.toList())
+                ));
 
-        // Column: In Progress
-        List<String> inProgressTaskIds = tasksByStatus.get(Task.Status.IN_PROGRESS).stream()
-            .map(task -> task.getId().toString()).collect(Collectors.toList());
-        columns.put("column-2", new TaskBoardDTO.ColumnDTO("column-2", "In Progress", inProgressTaskIds.toArray(new String[0])));
-        columnOrder[index++] = "column-2";
+        TaskBoardDTO.ColumnDTO todoColumn = new TaskBoardDTO.ColumnDTO(
+            "column-1",
+            "To Do",
+            tasksByStatus.getOrDefault(Task.Status.TODO, Arrays.asList()).toArray(new String[0])
+        );
+        columns.put("column-1", todoColumn);
 
-        // Column: Review
-        List<String> reviewTaskIds = tasksByStatus.get(Task.Status.REVIEW).stream()
-            .map(task -> task.getId().toString()).collect(Collectors.toList());
-        columns.put("column-3", new TaskBoardDTO.ColumnDTO("column-3", "Review", reviewTaskIds.toArray(new String[0])));
-        columnOrder[index++] = "column-3";
+        TaskBoardDTO.ColumnDTO inProgressColumn = new TaskBoardDTO.ColumnDTO(
+            "column-2",
+            "In Progress",
+            tasksByStatus.getOrDefault(Task.Status.IN_PROGRESS, Arrays.asList()).toArray(new String[0])
+        );
+        columns.put("column-2", inProgressColumn);
 
-        // Column: Done
-        List<String> doneTaskIds = tasksByStatus.get(Task.Status.DONE).stream()
-            .map(task -> task.getId().toString()).collect(Collectors.toList());
-        columns.put("column-4", new TaskBoardDTO.ColumnDTO("column-4", "Done", doneTaskIds.toArray(new String[0])));
-        columnOrder[index++] = "column-4";
+        TaskBoardDTO.ColumnDTO reviewColumn = new TaskBoardDTO.ColumnDTO(
+            "column-3",
+            "Review",
+            tasksByStatus.getOrDefault(Task.Status.REVIEW, Arrays.asList()).toArray(new String[0])
+        );
+        columns.put("column-3", reviewColumn);
 
-        // Build DTO
-        TaskBoardDTO board = new TaskBoardDTO();
-        board.setColumns(columns);
-        board.setTasks(tasksMap);
-        board.setColumnOrder(columnOrder);
+        TaskBoardDTO.ColumnDTO doneColumn = new TaskBoardDTO.ColumnDTO(
+            "column-4",
+            "Done",
+            tasksByStatus.getOrDefault(Task.Status.DONE, Arrays.asList()).toArray(new String[0])
+        );
+        columns.put("column-4", doneColumn);
 
-        return board;
+        TaskBoardDTO taskBoard = new TaskBoardDTO();
+        taskBoard.setColumns(columns);
+        taskBoard.setTasks(taskMap);
+        taskBoard.setColumnOrder(columnOrder);
+        return taskBoard;
     }
 
-    public Task createTask(String email, String title, String description, String priority, LocalDate dueDate, String status) {
-        Optional<User> userOpt = userRepository.findByEmail(email);
-        if (userOpt.isEmpty()) {
-            throw new RuntimeException("User not found");
-        }
-        User user = userOpt.get();
+    public Task createTask(String username, String title, String description, String priority, LocalDate dueDate, String status) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
         Task task = new Task();
+        task.setId(UUID.randomUUID());
         task.setUser(user);
         task.setTitle(title);
         task.setDescription(description);
         task.setPriority(Task.Priority.valueOf(priority.toUpperCase()));
         task.setDueDate(dueDate);
-        task.setStatus(Task.Status.valueOf(status.toUpperCase()));
+        task.setStatus(Task.Status.valueOf(status));
+        task.setCreatedAt(LocalDateTime.now());
         task.setCompleted(false);
         task.setComments(0);
         task.setAttachments(0);
-        task.setCreatedAt(LocalDateTime.now());
 
         return taskRepository.save(task);
     }
 
-    public void updateTaskStatus(String email, String taskId, String newStatus) {
-        Optional<User> userOpt = userRepository.findByEmail(email);
-        if (userOpt.isEmpty()) {
-            throw new RuntimeException("User not found");
-        }
-        User user = userOpt.get();
+    public void updateTask(String username, String taskId, String title, String description, String priority, LocalDate dueDate, String status) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        Optional<Task> taskOpt = taskRepository.findById(UUID.fromString(taskId));
-        if (taskOpt.isEmpty() || !taskOpt.get().getUser().equals(user)) {
-            throw new RuntimeException("Task not found or unauthorized");
-        }
-        Task task = taskOpt.get();
+        Task task = taskRepository.findById(UUID.fromString(taskId))
+                .orElseThrow(() -> new IllegalArgumentException("Task not found"));
 
-        task.setStatus(Task.Status.valueOf(newStatus.toUpperCase()));
-        task.setCompleted(newStatus.equalsIgnoreCase("DONE"));
+        if (!task.getUser().getId().equals(user.getId())) {
+            throw new SecurityException("Unauthorized to update this task");
+        }
+
+        task.setTitle(title);
+        task.setDescription(description);
+        task.setPriority(Task.Priority.valueOf(priority.toUpperCase()));
+        task.setDueDate(dueDate);
+        task.setStatus(Task.Status.valueOf(status));
+        taskRepository.save(task);
+    }
+
+    public void deleteTask(String username, String taskId) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        Task task = taskRepository.findById(UUID.fromString(taskId))
+                .orElseThrow(() -> new IllegalArgumentException("Task not found"));
+
+        if (!task.getUser().getId().equals(user.getId())) {
+            throw new SecurityException("Unauthorized to delete this task");
+        }
+
+        taskRepository.delete(task);
+    }
+
+    public void updateTaskStatus(String username, String taskId, String status) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        Task task = taskRepository.findById(UUID.fromString(taskId))
+                .orElseThrow(() -> new IllegalArgumentException("Task not found"));
+
+        if (!task.getUser().getId().equals(user.getId())) {
+            throw new SecurityException("Unauthorized to update this task");
+        }
+
+        task.setStatus(Task.Status.valueOf(status));
         taskRepository.save(task);
     }
 }
