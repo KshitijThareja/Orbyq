@@ -79,7 +79,7 @@ public class DashboardService {
         List<DashboardSummaryDTO.TaskDTO> taskDTOs = upcomingTasks.stream()
                 .limit(3)
                 .map(t -> {
-                    String time = t.getDueDate().format(DateTimeFormatter.ofPattern("MMM d, yyyy, h:mm a"));
+                    String time = t.getDueDate().format(DateTimeFormatter.ofPattern("MMM d, yyyy"));
                     String icon = t.getDueDate().equals(today) ? "Clock" : t.getDueDate().isBefore(today.plusDays(3)) ? "Calendar" : "CheckCircle2";
                     return new DashboardSummaryDTO.TaskDTO(t.getTitle(), time, icon);
                 })
