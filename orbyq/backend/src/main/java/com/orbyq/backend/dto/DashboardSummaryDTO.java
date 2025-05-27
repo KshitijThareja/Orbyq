@@ -8,8 +8,10 @@ public class DashboardSummaryDTO {
     private long taskCount;
     private double taskProgress;
     private long projectCount;
+    private double projectProgress;
     private long ideaCount;
     private long newIdeasSinceYesterday;
+    private List<ActivityDTO> recentProjectActivities;
     private List<ActivityDTO> recentActivities;
     private List<TaskDTO> upcomingTasks;
     private List<ProductivityDTO> weeklyProductivity;
@@ -25,7 +27,6 @@ public class DashboardSummaryDTO {
             this.createdAt = createdAt;
         }
 
-        // Getters and setters
         public String getAction() { return action; }
         public void setAction(String action) { this.action = action; }
         public String getDetails() { return details; }
@@ -45,7 +46,6 @@ public class DashboardSummaryDTO {
             this.icon = icon;
         }
 
-        // Getters and setters
         public String getTitle() { return title; }
         public void setTitle(String title) { this.title = title; }
         public String getTime() { return time; }
@@ -63,14 +63,12 @@ public class DashboardSummaryDTO {
             this.taskCount = taskCount;
         }
 
-        // Getters and setters
         public String getDay() { return day; }
         public void setDay(String day) { this.day = day; }
         public int getTaskCount() { return taskCount; }
         public void setTaskCount(int taskCount) { this.taskCount = taskCount; }
     }
 
-    // Getters and setters
     public String getUserName() { return userName; }
     public void setUserName(String userName) { this.userName = userName; }
     public long getTaskCount() { return taskCount; }
@@ -79,10 +77,14 @@ public class DashboardSummaryDTO {
     public void setTaskProgress(double taskProgress) { this.taskProgress = taskProgress; }
     public long getProjectCount() { return projectCount; }
     public void setProjectCount(long projectCount) { this.projectCount = projectCount; }
+    public double getProjectProgress() { return projectProgress; }
+    public void setProjectProgress(double projectProgress) { this.projectProgress = projectProgress; }
     public long getIdeaCount() { return ideaCount; }
     public void setIdeaCount(long ideaCount) { this.ideaCount = ideaCount; }
     public long getNewIdeasSinceYesterday() { return newIdeasSinceYesterday; }
     public void setNewIdeasSinceYesterday(long newIdeasSinceYesterday) { this.newIdeasSinceYesterday = newIdeasSinceYesterday; }
+    public List<ActivityDTO> getRecentProjectActivities() { return recentProjectActivities; }
+    public void setRecentProjectActivities(List<ActivityDTO> recentProjectActivities) { this.recentProjectActivities = recentProjectActivities; }
     public List<ActivityDTO> getRecentActivities() { return recentActivities; }
     public void setRecentActivities(List<ActivityDTO> recentActivities) { this.recentActivities = recentActivities; }
     public List<TaskDTO> getUpcomingTasks() { return upcomingTasks; }

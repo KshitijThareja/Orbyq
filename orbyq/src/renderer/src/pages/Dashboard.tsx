@@ -12,8 +12,10 @@ interface DashboardSummary {
   taskCount: number;
   taskProgress: number;
   projectCount: number;
+  projectProgress: number;
   ideaCount: number;
   newIdeasSinceYesterday: number;
+  recentProjectActivities: { action: string; details: string; createdAt: string }[];
   recentActivities: { action: string; details: string; createdAt: string }[];
   upcomingTasks: { title: string; time: string; icon: string }[];
   weeklyProductivity: { day: string; taskCount: number }[];
@@ -21,6 +23,7 @@ interface DashboardSummary {
 
 const Dashboard = () => {
   const { callBackend } = useAuth();
+  //@ts-ignore
   const [greeting, setGreeting] = useState(() => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good morning";
@@ -103,7 +106,10 @@ const Dashboard = () => {
               </div>
               <div className="flex gap-2 mt-2">
                 <div className="h-2 rounded-full bg-muted flex-1">
-                  <div className="h-2 rounded-full bg-category-personal w-3/4"></div>
+                  <div
+                    className="h-2 rounded-full bg-category-personal"
+                    style={{ width: `${dashboardData?.projectProgress}%` }}
+                  ></div>
                 </div>
               </div>
             </CardContent>
@@ -128,12 +134,12 @@ const Dashboard = () => {
         <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2 bg-background border-border">
             <CardHeader>
-              <CardTitle className="text-foreground">Recent Activities</CardTitle>
-              <CardDescription className="text-muted-foreground">Your recent actions</CardDescription>
+              <CardTitle className="text-foreground">Recent Projects</CardTitle>
+              <CardDescription className="text-muted-foreground">Your recent project updates</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {dashboardData?.recentActivities.map((activity, i) => (
+                {dashboardData?.recentProjectActivities.map((activity, i) => (
                   <div
                     key={i}
                     className="flex gap-4 items-start pb-4 border-b border-border last:border-0 last:pb-0"
@@ -175,7 +181,32 @@ const Dashboard = () => {
           </Card>
         </motion.div>
 
-        <motion.div variants={item}>
+        <motion.div variants={item} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="bg-background border-border">
+            <CardHeader>
+              <CardTitle className="text-foreground">Activity</CardTitle>
+              <CardDescription className="text-muted-foreground">Your recent activity</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {dashboardData?.recentActivities.map((activity, i) => (
+                  <div
+                    key={i}
+                    className="flex gap-4 items-start pb-4 border-b border-border last:border-0 last:pb-0"
+                  >
+                    <div className="w-2 h-2 rounded-full bg-primary mt-1.5"></div>
+                    <div>
+                      <p className="text-sm text-foreground">{activity.details}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {new Date(activity.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
           <Card className="bg-background border-border">
             <CardHeader>
               <CardTitle className="text-foreground">Weekly Productivity</CardTitle>

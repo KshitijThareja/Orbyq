@@ -16,6 +16,10 @@ public class Task {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @ManyToOne
+    @JoinColumn(name = "project_id")
+    private Project project;
+
     private String title;
     private String description;
     private boolean completed;
@@ -27,6 +31,8 @@ public class Task {
     public void setId(UUID id) { this.id = id; }
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
+    public Project getProject() { return project; }
+    public void setProject(Project project) { this.project = project; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     public String getDescription() { return description; }

@@ -50,12 +50,21 @@ public class DashboardService {
         // Projects
         List<Project> projects = projectRepository.findByUser(user);
         long projectCount = projects.size();
+        long totalProjectTasks = tasks.stream().filter(t -> t.getProject() != null).count();
+        long completedProjectTasks = tasks.stream().filter(t -> t.getProject() != null && t.isCompleted()).count();
+        double projectProgress = totalProjectTasks > 0 ? (completedProjectTasks * 100.0 / totalProjectTasks) : 0;
 
         // Ideas
         List<Idea> ideas = ideaRepository.findByUser(user);
         long ideaCount = ideas.size();
         LocalDateTime yesterday = LocalDateTime.now().minusDays(1);
         long newIdeasSinceYesterday = ideaRepository.countByUserAndCreatedAtAfter(user, yesterday);
+
+        // Recent Project Activities
+        List<ActivityLog> projectActivities = activityLogRepository.findTop5ByUserAndActionStartingWithOrderByCreatedAtDesc(user, "Project");
+        List<DashboardSummaryDTO.ActivityDTO> projectActivityDTOs = projectActivities.stream()
+                .map(a -> new DashboardSummaryDTO.ActivityDTO(a.getAction(), a.getDetails(), a.getCreatedAt()))
+                .toList();
 
         // Recent Activities
         List<ActivityLog> activities = activityLogRepository.findTop5ByUserOrderByCreatedAtDesc(user);
@@ -71,7 +80,7 @@ public class DashboardService {
                 .limit(3)
                 .map(t -> {
                     String time = t.getDueDate().format(DateTimeFormatter.ofPattern("MMM d, yyyy, h:mm a"));
-                    String icon = t.getDueDate().equals(today) ? "Clock" : "Calendar";
+                    String icon = t.getDueDate().equals(today) ? "Clock" : t.getDueDate().isBefore(today.plusDays(3)) ? "Calendar" : "CheckCircle2";
                     return new DashboardSummaryDTO.TaskDTO(t.getTitle(), time, icon);
                 })
                 .toList();
@@ -89,12 +98,14 @@ public class DashboardService {
 
         // Build DTO
         DashboardSummaryDTO summary = new DashboardSummaryDTO();
-        summary.setUserName(user.getName() != null ? user.getName() : "User");
+        summary.setUserName(user.getName());
         summary.setTaskCount(taskCount);
         summary.setTaskProgress(taskProgress);
         summary.setProjectCount(projectCount);
+        summary.setProjectProgress(projectProgress);
         summary.setIdeaCount(ideaCount);
         summary.setNewIdeasSinceYesterday(newIdeasSinceYesterday);
+        summary.setRecentProjectActivities(projectActivityDTOs);
         summary.setRecentActivities(activityDTOs);
         summary.setUpcomingTasks(taskDTOs);
         summary.setWeeklyProductivity(productivity);
