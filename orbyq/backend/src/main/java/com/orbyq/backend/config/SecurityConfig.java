@@ -29,19 +29,19 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf
-                        .ignoringRequestMatchers("/api/auth/**", "/api/ping") // Disable CSRF for auth endpoints
+                        .ignoringRequestMatchers("/api/auth/**", "/api/ping", "/api/**") // Disable CSRF for auth endpoints
                 )
                 .cors(cors -> cors.configurationSource(request -> {
                     var corsConfiguration = new org.springframework.web.cors.CorsConfiguration();
                     corsConfiguration.setAllowedOrigins(java.util.List.of("http://localhost:5173"));
-                    corsConfiguration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE"));
+                    corsConfiguration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
                     corsConfiguration.setAllowedHeaders(java.util.List.of("*"));
                     corsConfiguration.setAllowCredentials(true);
                     return corsConfiguration;
                 }))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/api/ping", "/api/auth/login", "/api/auth/register", "/api/auth/validate", "/api/auth/refresh").permitAll()
+                        .requestMatchers("/api/auth/**", "/api/ping", "/api/auth/login", "/api/auth/register", "/api/auth/validate", "/api/auth/refresh", "/api/dashboard/**", "/api/dashboard/ping", "/api/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JwtAuthenticationFilter(jwtUtil, userDetailsService),

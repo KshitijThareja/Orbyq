@@ -43,6 +43,7 @@ public class AuthService {
         roles.add("USER"); // Default role
 
         User user = new User(
+                request.getName(),
                 request.getEmail(),
                 passwordEncoder.encode(request.getPassword()),
                 roles

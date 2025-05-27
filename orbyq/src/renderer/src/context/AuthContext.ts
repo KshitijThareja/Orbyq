@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 interface AuthContextType {
     token: string | null;
     login: (email: string, password: string) => Promise<void>;
-    register: (email: string, password: string) => Promise<void>;
+    register: (email: string, password: string, name: string) => Promise<void>;
     logout: () => void;
     isAuthenticated: boolean;
     callBackend: <T>(endpoint: string, method?: string, data?: any) => Promise<T>;
@@ -133,13 +133,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const register = async (email: string, password: string) => {
+  const register = async (email: string, password: string, name: string) => {
     try {
       // @ts-ignore
       const response = await window.api.callBackend<{ token: string; refreshToken: string }>(
         'auth/register',
         'POST',
-        { email, password }
+        { email, password, name }
       );
 
       window.electronStore.set('token', response.token);
