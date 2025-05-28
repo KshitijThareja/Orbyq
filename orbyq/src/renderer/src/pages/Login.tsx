@@ -50,7 +50,7 @@ function Login() {
       transition: {
         duration: 10,
         repeat: Infinity,
-        repeatType: 'loop' as const, // Explicitly set to 'loop'
+        repeatType: 'loop' as const,
         ease: 'easeInOut',
       },
     },

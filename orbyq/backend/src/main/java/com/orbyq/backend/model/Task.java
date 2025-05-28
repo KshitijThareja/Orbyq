@@ -2,14 +2,13 @@ package com.orbyq.backend.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "tasks")
 public class Task {
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.UUID) 
     private UUID id;
 
     @ManyToOne
@@ -23,8 +22,12 @@ public class Task {
     private String title;
     private String description;
     private boolean completed;
+
+    @Column(name = "due_date")
     private LocalDate dueDate;
-    private LocalDateTime createdAt;
+
+    @Column(name = "created_at")
+    private LocalDate createdAt;
 
     @Enumerated(EnumType.STRING)
     private Status status;
@@ -34,6 +37,9 @@ public class Task {
 
     private int comments;
     private int attachments;
+
+    @Version
+    private long version; // Changed to primitive long to avoid null
 
     public enum Status {
         TODO, IN_PROGRESS, REVIEW, DONE
@@ -58,8 +64,8 @@ public class Task {
     public void setCompleted(boolean completed) { this.completed = completed; }
     public LocalDate getDueDate() { return dueDate; }
     public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDate getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDate createdAt) { this.createdAt = createdAt; }
     public Status getStatus() { return status; }
     public void setStatus(Status status) { this.status = status; }
     public Priority getPriority() { return priority; }
@@ -68,4 +74,6 @@ public class Task {
     public void setComments(int comments) { this.comments = comments; }
     public int getAttachments() { return attachments; }
     public void setAttachments(int attachments) { this.attachments = attachments; }
+    public long getVersion() { return version; }
+    public void setVersion(long version) { this.version = version; }
 }
