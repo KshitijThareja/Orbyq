@@ -103,6 +103,7 @@ public class TaskService {
         task.setStatus(Task.Status.valueOf(status));
         task.setCreatedAt(LocalDate.now());
         task.setCompleted(false);
+        task.setCompletedAt(null); // Initialize as not completed
         task.setComments(0);
         task.setAttachments(0);
         task.setVersion(0L);
@@ -126,6 +127,14 @@ public class TaskService {
         task.setPriority(Task.Priority.valueOf(priority.toUpperCase()));
         task.setDueDate(dueDate);
         task.setStatus(Task.Status.valueOf(status));
+        // Update isCompleted and completedAt based on status
+        boolean isCompleted = status.equals("DONE");
+        task.setCompleted(isCompleted);
+        if (isCompleted && task.getCompletedAt() == null) {
+            task.setCompletedAt(LocalDate.now());
+        } else if (!isCompleted) {
+            task.setCompletedAt(null);
+        }
         taskRepository.save(task);
     }
 
@@ -155,6 +164,14 @@ public class TaskService {
         }
 
         task.setStatus(Task.Status.valueOf(status));
+        // Update isCompleted and completedAt based on status
+        boolean isCompleted = status.equals("DONE");
+        task.setCompleted(isCompleted);
+        if (isCompleted && task.getCompletedAt() == null) {
+            task.setCompletedAt(LocalDate.now());
+        } else if (!isCompleted) {
+            task.setCompletedAt(null);
+        }
         taskRepository.save(task);
     }
 }

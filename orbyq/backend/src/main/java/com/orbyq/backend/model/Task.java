@@ -29,6 +29,9 @@ public class Task {
     @Column(name = "created_at")
     private LocalDate createdAt;
 
+    @Column(name = "completed_at")
+    private LocalDate completedAt;
+
     @Enumerated(EnumType.STRING)
     private Status status;
 
@@ -39,7 +42,7 @@ public class Task {
     private int attachments;
 
     @Version
-    private long version; // Changed to primitive long to avoid null
+    private long version;
 
     public enum Status {
         TODO, IN_PROGRESS, REVIEW, DONE
@@ -66,6 +69,8 @@ public class Task {
     public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
     public LocalDate getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDate createdAt) { this.createdAt = createdAt; }
+    public LocalDate getCompletedAt() { return completedAt; }
+    public void setCompletedAt(LocalDate completedAt) { this.completedAt = completedAt; }
     public Status getStatus() { return status; }
     public void setStatus(Status status) { this.status = status; }
     public Priority getPriority() { return priority; }
