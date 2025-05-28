@@ -35,22 +35,17 @@ public class TimelineService {
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        // Fetch all projects for the user
         List<Project> projects = projectRepository.findByUser(user);
         List<TimelineDTO.ProjectDTO> projectDTOs = new ArrayList<>();
 
-        // Colors for projects (cycling through a few predefined colors as fallback)
         String[] colors = {"bg-category-work", "bg-category-personal", "bg-category-learning", "bg-priority-high", "bg-priority-medium"};
         int colorIndex = 0;
 
-        // Map to store project progress
         Map<String, Double> projectProgress = new HashMap<>();
 
-        // Fetch tasks and organize them by project
         for (Project project : projects) {
             List<Task> tasks = taskRepository.findByProject(project);
 
-            // Apply filters
             if (statusFilter != null && !statusFilter.isEmpty()) {
                 tasks = tasks.stream()
                     .filter(task -> task.getStatus().toString().equals(statusFilter))
@@ -77,15 +72,13 @@ public class TimelineService {
                 );
             }).collect(Collectors.toList());
 
-            // Calculate project progress
-            long totalTasks = taskRepository.findByProject(project).size(); // Use unfiltered count for progress
+            long totalTasks = taskRepository.findByProject(project).size();
             long completedTasks = taskRepository.findByProject(project).stream()
                 .filter(Task::isCompleted)
                 .count();
             double progress = totalTasks > 0 ? (completedTasks * 100.0 / totalTasks) : 0.0;
             projectProgress.put(project.getId().toString(), progress);
 
-            // Use project's custom color if available
             String projectColor = project.getColor() != null ? project.getColor() : colors[colorIndex % colors.length];
             projectDTOs.add(new TimelineDTO.ProjectDTO(
                 project.getId().toString(),
@@ -96,7 +89,6 @@ public class TimelineService {
             colorIndex++;
         }
 
-        // Fetch upcoming milestones (tasks due within the next 30 days, apply filters)
         LocalDate today = LocalDate.now();
         LocalDate endDate = today.plusDays(30);
         List<Task> upcomingTasks = taskRepository.findByUserAndDueDateBetween(user, today, endDate);
@@ -121,7 +113,6 @@ public class TimelineService {
                 .limit(5)
                 .collect(Collectors.toList());
 
-        // Build the DTO
         TimelineDTO timelineDTO = new TimelineDTO();
         timelineDTO.setProjects(projectDTOs);
         timelineDTO.setUpcomingMilestones(milestones);
@@ -174,6 +165,19 @@ public class TimelineService {
         }
 
         project.setColor(color);
+        projectRepository.save(project);
+    }
+
+    public void createProject(String username, String name, String color) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        Project project = new Project();
+        project.setUser(user);
+        project.setName(name);
+        project.setColor(color != null ? color : "bg-category-work"); // Default color if none provided
+        project.setVersion(0L);
+
         projectRepository.save(project);
     }
 }

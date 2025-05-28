@@ -13,7 +13,7 @@ import Register from "./pages/Register";
 import { useAuth } from "./context/AuthContext";
 import "./assets/index.css";
 import { JSX, useEffect, useCallback, useState } from "react";
-import { Loader2 } from "lucide-react";
+import Loader from "./components/Loader";
 
 function ProtectedRoute({ children }: { children: JSX.Element }) {
   const { isAuthenticated, isValidating } = useAuth();
@@ -22,7 +22,7 @@ function ProtectedRoute({ children }: { children: JSX.Element }) {
   if (isValidating) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <Loader size="md" text="Loading..." />
       </div>
     );
   }
@@ -40,7 +40,7 @@ function PublicRoute({ children }: { children: JSX.Element }) {
   if (isValidating) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <Loader size="md" text="Loading..." />
       </div>
     );
   }
@@ -85,7 +85,7 @@ function App() {
     return (
       <ThemeProvider defaultTheme="light">
         <div className="flex items-center justify-center h-screen bg-background">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <Loader size="md" text="Loading..." />
         </div>
         <Toaster />
       </ThemeProvider>

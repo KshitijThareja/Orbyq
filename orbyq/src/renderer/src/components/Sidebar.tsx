@@ -1,4 +1,4 @@
-import { memo, useEffect } from 'react';
+import { memo, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -16,6 +16,9 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import * as Dialog from '@radix-ui/react-dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface SidebarProps {
   open: boolean;
@@ -23,8 +26,14 @@ interface SidebarProps {
 }
 
 const Sidebar = memo(({ open, setOpen }: SidebarProps) => {
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout, callBackend } = useAuth();
   const navigate = useNavigate();
+  const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
+  const [newProject, setNewProject] = useState({
+    name: "",
+    color: "",
+  });
+  const [error, setError] = useState<string | null>(null);
 
   if (!isAuthenticated) {
     return null;
@@ -42,6 +51,27 @@ const Sidebar = memo(({ open, setOpen }: SidebarProps) => {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleCreateProject = async () => {
+    if (!newProject.name) {
+      setError("Project name is required");
+      return;
+    }
+
+    try {
+      await callBackend<void>('timeline/project', 'POST', {
+        name: newProject.name,
+        color: newProject.color || null, // Send null if no color is provided
+      });
+      setIsNewProjectDialogOpen(false);
+      setNewProject({ name: "", color: "" });
+      setError(null);
+      // Optionally navigate to the timeline to see the new project
+      navigate('/timeline');
+    } catch (err: any) {
+      setError('Failed to create project: ' + (err.message || 'Unknown error'));
+    }
   };
 
   return (
@@ -104,15 +134,57 @@ const Sidebar = memo(({ open, setOpen }: SidebarProps) => {
       </div>
 
       <div className="p-4 border-t border-border space-y-2">
-        <Button
-          className={cn(
-            'w-full bg-primary hover:bg-primary/90 text-primary-foreground',
-            !open && 'p-2'
-          )}
-        >
-          <PlusCircle size={18} />
-          {open && <span className="ml-2">New Project</span>}
-        </Button>
+        <Dialog.Root open={isNewProjectDialogOpen} onOpenChange={setIsNewProjectDialogOpen}>
+          <Dialog.Trigger asChild>
+            <Button
+              className={cn(
+                'w-full bg-primary hover:bg-primary/90 text-primary-foreground',
+                !open && 'p-2'
+              )}
+            >
+              <PlusCircle size={18} />
+              {open && <span className="ml-2">New Project</span>}
+            </Button>
+          </Dialog.Trigger>
+          <Dialog.Portal>
+            <Dialog.Overlay className="fixed inset-0 bg-black/50" />
+            <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background p-6 rounded-lg border border-border w-full max-w-md">
+              <Dialog.Title className="text-lg font-medium text-foreground">Create New Project</Dialog.Title>
+              <Dialog.Description className="text-muted-foreground mt-2">
+                Enter the details to create a new project.
+              </Dialog.Description>
+              <div className="space-y-4 mt-4">
+                <div>
+                  <Label htmlFor="projectName" className="text-muted-foreground">Project Name</Label>
+                  <Input
+                    id="projectName"
+                    value={newProject.name}
+                    onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
+                    className="border-border text-foreground"
+                    placeholder="e.g., My New Project"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="projectColor" className="text-muted-foreground">Color (Optional, e.g., bg-blue-500)</Label>
+                  <Input
+                    id="projectColor"
+                    value={newProject.color}
+                    onChange={(e) => setNewProject({ ...newProject, color: e.target.value })}
+                    className="border-border text-foreground"
+                    placeholder="e.g., bg-blue-500"
+                  />
+                </div>
+                {error && <p className="text-destructive text-sm">{error}</p>}
+              </div>
+              <div className="flex justify-end gap-2 mt-6">
+                <Dialog.Close asChild>
+                  <Button variant="outline" className="border-border text-foreground hover:bg-muted">Cancel</Button>
+                </Dialog.Close>
+                <Button onClick={handleCreateProject} className="bg-primary hover:bg-primary/90 text-primary-foreground">Create</Button>
+              </div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
         <Button
           variant="destructive"
           className={cn(
