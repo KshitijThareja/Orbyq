@@ -10,7 +10,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -96,17 +95,17 @@ public class TaskService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
         Task task = new Task();
-        task.setId(UUID.randomUUID());
         task.setUser(user);
         task.setTitle(title);
         task.setDescription(description);
         task.setPriority(Task.Priority.valueOf(priority.toUpperCase()));
         task.setDueDate(dueDate);
         task.setStatus(Task.Status.valueOf(status));
-        task.setCreatedAt(LocalDateTime.now());
+        task.setCreatedAt(LocalDate.now());
         task.setCompleted(false);
         task.setComments(0);
         task.setAttachments(0);
+        task.setVersion(0L);
 
         return taskRepository.save(task);
     }

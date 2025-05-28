@@ -25,12 +25,11 @@ const Dashboard = () => {
   const { callBackend } = useAuth();
   //@ts-ignore
   const [greeting, setGreeting] = useState(() => {
-    // Adjust for IST (UTC+5:30)
     const now = new Date();
-    const istOffset = 5.5 * 60; // IST is UTC+5:30
+    const istOffset = 5.5 * 60;
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
     const istTime = new Date(utc + (istOffset * 60000));
-    const hour = istTime.getHours(); // Use IST hour
+    const hour = istTime.getHours();
 
     if (hour < 12) return "Good morning";
     if (hour < 18) return "Good afternoon";
@@ -242,8 +241,8 @@ const Dashboard = () => {
             <CardContent>
               <div className="h-[200px] flex items-end justify-between gap-2 px-4">
                 {dashboardData.weeklyProductivity.map((day, i) => {
-                  const maxHeight = 150; // Max height in pixels
-                  const height = Math.min(day.taskCount * 20, maxHeight); // Scale height based on task count
+                  const maxHeight = 150;
+                  const height = Math.min(day.taskCount * 20, maxHeight);
                   return (
                     <div key={i} className="flex flex-col items-center gap-2 flex-1 relative group">
                       <div

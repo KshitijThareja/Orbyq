@@ -64,6 +64,12 @@ const TaskBoard = () => {
   } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  // Get the current date dynamically in YYYY-MM-DD format
+  const getCurrentDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+  };
+
   const fetchBoardData = async () => {
     try {
       const data = await callBackend<TaskBoardData>('taskboard');
@@ -75,7 +81,7 @@ const TaskBoard = () => {
       const taskIds = Object.keys(data.tasks);
       const displayNumbers: { [key: string]: number } = {};
       taskIds.forEach((taskId, index) => {
-        displayNumbers[taskId] = index + 1; // Task 1, Task 2, etc.
+        displayNumbers[taskId] = index + 1;
       });
       setTaskDisplayNumbers(displayNumbers);
 
@@ -176,19 +182,61 @@ const TaskBoard = () => {
     }
   };
 
+  const validateTaskInput = (task: typeof newTask): string | null => {
+    if (!task.title.trim()) {
+      return "Title is required";
+    }
+    if (!task.dueDate) {
+      return "Due date is required";
+    }
+    // Validate due date is not in the past using the current date
+    const dueDate = new Date(task.dueDate);
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0); // Reset time to midnight for date-only comparison
+    if (dueDate < currentDate) {
+      return "Due date cannot be in the past";
+    }
+    return null;
+  };
+
   const handleAddTask = async () => {
+    // Validate input
+    const validationError = validateTaskInput(newTask);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    // Prepare the payload explicitly
+    const payload = {
+      title: newTask.title,
+      description: newTask.description,
+      priority: newTask.priority,
+      dueDate: newTask.dueDate,
+      status: newTask.status
+    };
+
     try {
-      await callBackend<void>('taskboard', 'POST', newTask);
+      console.log('Creating task with payload:', payload);
+      await callBackend<void>('taskboard', 'POST', payload);
       setIsDialogOpen(false);
       setNewTask({ title: "", description: "", priority: "medium", dueDate: "", status: "TODO" });
       fetchBoardData();
-    } catch (err) {
-      setError('Failed to create task');
+    } catch (err: any) {
+      setError('Failed to create task: ' + (err.message || 'Unknown error'));
     }
   };
 
   const handleEditTask = async () => {
     if (!editingTask) return;
+
+    // Validate input
+    const validationError = validateTaskInput(editingTask);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     try {
       await callBackend<void>(`taskboard/${editingTask.id}`, 'PUT', {
         title: editingTask.title,
@@ -259,13 +307,13 @@ const TaskBoard = () => {
         <div className="flex gap-2">
           <Select onValueChange={setFilterPriority} defaultValue="all">
             <SelectTrigger className="w-[120px] border-border text-foreground">
-              <SelectValue placeholder="Filter" />
+              <SelectValue placeholder="Filter" className="text-foreground" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Priorities</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
+            <SelectContent className="bg-background border-border text-foreground">
+              <SelectItem value="all" className="text-foreground hover:bg-muted">All Priorities</SelectItem>
+              <SelectItem value="high" className="text-foreground hover:bg-muted">High</SelectItem>
+              <SelectItem value="medium" className="text-foreground hover:bg-muted">Medium</SelectItem>
+              <SelectItem value="low" className="text-foreground hover:bg-muted">Low</SelectItem>
             </SelectContent>
           </Select>
           <Dialog.Root open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -304,12 +352,12 @@ const TaskBoard = () => {
                       defaultValue="medium"
                     >
                       <SelectTrigger className="border-border text-foreground">
-                        <SelectValue />
+                        <SelectValue className="text-foreground" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="high">High</SelectItem>
-                        <SelectItem value="medium">Medium</SelectItem>
-                        <SelectItem value="low">Low</SelectItem>
+                      <SelectContent className="bg-background border-border text-foreground">
+                        <SelectItem value="high" className="text-foreground hover:bg-muted px-3 py-1">High</SelectItem>
+                        <SelectItem value="medium" className="text-foreground hover:bg-muted px-3 py-1">Medium</SelectItem>
+                        <SelectItem value="low" className="text-foreground hover:bg-muted px-3 py-1">Low</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -320,6 +368,7 @@ const TaskBoard = () => {
                       type="date"
                       value={newTask.dueDate}
                       onChange={e => setNewTask({ ...newTask, dueDate: e.target.value })}
+                      min={getCurrentDate()}
                       className="border-border text-foreground"
                     />
                   </div>
@@ -330,13 +379,13 @@ const TaskBoard = () => {
                       defaultValue="TODO"
                     >
                       <SelectTrigger className="border-border text-foreground">
-                        <SelectValue />
+                        <SelectValue className="text-foreground" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="TODO">To Do</SelectItem>
-                        <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                        <SelectItem value="REVIEW">Review</SelectItem>
-                        <SelectItem value="DONE">Done</SelectItem>
+                      <SelectContent className="bg-background border-border text-foreground">
+                        <SelectItem value="TODO" className="text-foreground hover:bg-muted px-3 py-1">To Do</SelectItem>
+                        <SelectItem value="IN_PROGRESS" className="text-foreground hover:bg-muted px-3 py-1">In Progress</SelectItem>
+                        <SelectItem value="REVIEW" className="text-foreground hover:bg-muted px-3 py-1">Review</SelectItem>
+                        <SelectItem value="DONE" className="text-foreground hover:bg-muted px-3 py-1">Done</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -385,12 +434,12 @@ const TaskBoard = () => {
                     defaultValue={editingTask.priority}
                   >
                     <SelectTrigger className="border-border text-foreground">
-                      <SelectValue />
+                      <SelectValue className="text-foreground" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="low">Low</SelectItem>
+                    <SelectContent className="bg-background border-border text-foreground">
+                      <SelectItem value="high" className="text-foreground hover:bg-muted px-3 py-1">High</SelectItem>
+                      <SelectItem value="medium" className="text-foreground hover:bg-muted px-3 py-1">Medium</SelectItem>
+                      <SelectItem value="low" className="text-foreground hover:bg-muted px-3 py-1">Low</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -401,6 +450,7 @@ const TaskBoard = () => {
                     type="date"
                     value={editingTask.dueDate}
                     onChange={e => setEditingTask({ ...editingTask, dueDate: e.target.value })}
+                    min={getCurrentDate()}
                     className="border-border text-foreground"
                   />
                 </div>
@@ -411,13 +461,13 @@ const TaskBoard = () => {
                     defaultValue={editingTask.status}
                   >
                     <SelectTrigger className="border-border text-foreground">
-                      <SelectValue />
+                      <SelectValue className="text-foreground" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="TODO">To Do</SelectItem>
-                      <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                      <SelectItem value="REVIEW">Review</SelectItem>
-                      <SelectItem value="DONE">Done</SelectItem>
+                    <SelectContent className="bg-background border-border text-foreground">
+                      <SelectItem value="TODO" className="text-foreground hover:bg-muted px-3 py-1">To Do</SelectItem>
+                      <SelectItem value="IN_PROGRESS" className="text-foreground hover:bg-muted px-3 py-1">In Progress</SelectItem>
+                      <SelectItem value="REVIEW" className="text-foreground hover:bg-muted px-3 py-1">Review</SelectItem>
+                      <SelectItem value="DONE" className="text-foreground hover:bg-muted px-3 py-1">Done</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

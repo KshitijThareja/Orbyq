@@ -31,12 +31,35 @@ public class TaskController {
         @AuthenticationPrincipal UserDetails userDetails,
         @RequestBody Map<String, String> request
     ) {
+        // Validate that taskId is not present in the request
+        if (request.containsKey("taskId")) {
+            throw new IllegalArgumentException("taskId should not be provided in a create request. Use PUT to update an existing task.");
+        }
+
+        // Validate required fields
+        if (!request.containsKey("title") || request.get("title") == null || request.get("title").trim().isEmpty()) {
+            throw new IllegalArgumentException("Title is required");
+        }
+        if (!request.containsKey("status") || request.get("status") == null || request.get("status").trim().isEmpty()) {
+            throw new IllegalArgumentException("Status is required");
+        }
+        if (!request.containsKey("dueDate") || request.get("dueDate") == null || request.get("dueDate").trim().isEmpty()) {
+            throw new IllegalArgumentException("Due date is required");
+        }
+
+        // Validate due date is not in the past (current date: May 28, 2025)
+        LocalDate dueDate = LocalDate.parse(request.get("dueDate"));
+        LocalDate currentDate = LocalDate.now(); // May 28, 2025
+        if (dueDate.isBefore(currentDate)) {
+            throw new IllegalArgumentException("Due date cannot be in the past");
+        }
+
         Task task = taskService.createTask(
             userDetails.getUsername(),
             request.get("title"),
             request.get("description"),
             request.get("priority"),
-            LocalDate.parse(request.get("dueDate")),
+            dueDate,
             request.get("status")
         );
         return ResponseEntity.ok(task);
@@ -49,13 +72,31 @@ public class TaskController {
         @PathVariable String taskId,
         @RequestBody Map<String, String> request
     ) {
+        // Validate required fields
+        if (!request.containsKey("title") || request.get("title") == null || request.get("title").trim().isEmpty()) {
+            throw new IllegalArgumentException("Title is required");
+        }
+        if (!request.containsKey("status") || request.get("status") == null || request.get("status").trim().isEmpty()) {
+            throw new IllegalArgumentException("Status is required");
+        }
+        if (!request.containsKey("dueDate") || request.get("dueDate") == null || request.get("dueDate").trim().isEmpty()) {
+            throw new IllegalArgumentException("Due date is required");
+        }
+
+        // Validate due date is not in the past
+        LocalDate dueDate = LocalDate.parse(request.get("dueDate"));
+        LocalDate currentDate = LocalDate.now(); // May 28, 2025
+        if (dueDate.isBefore(currentDate)) {
+            throw new IllegalArgumentException("Due date cannot be in the past");
+        }
+
         taskService.updateTask(
             userDetails.getUsername(),
             taskId,
             request.get("title"),
             request.get("description"),
             request.get("priority"),
-            LocalDate.parse(request.get("dueDate")),
+            dueDate,
             request.get("status")
         );
         return ResponseEntity.ok().build();
@@ -78,6 +119,10 @@ public class TaskController {
         @PathVariable String taskId,
         @RequestBody Map<String, String> request
     ) {
+        if (!request.containsKey("status") || request.get("status") == null || request.get("status").trim().isEmpty()) {
+            throw new IllegalArgumentException("Status is required");
+        }
+
         taskService.updateTaskStatus(userDetails.getUsername(), taskId, request.get("status"));
         return ResponseEntity.ok().build();
     }

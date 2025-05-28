@@ -170,3 +170,7 @@
   background-color: hsl(var(--primary));
   border-color: hsl(var(--border));
 }
+
+.dark ::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+}

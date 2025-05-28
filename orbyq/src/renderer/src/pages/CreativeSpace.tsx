@@ -12,8 +12,8 @@ import placeholder from '../../../../resources/placeholder.svg'
 type CanvasItemStyle = {
   fontSize?: string;
   fontWeight?: string;
-  colorClass?: string; // Use Tailwind class instead of color
-  backgroundClass?: string; // Use Tailwind class for background
+  colorClass?: string; 
+  backgroundClass?: string;
   padding?: string;
   borderRadius?: string;
 };

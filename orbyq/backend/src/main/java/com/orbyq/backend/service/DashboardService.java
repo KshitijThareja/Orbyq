@@ -91,7 +91,7 @@ public class DashboardService {
         for (int i = 0; i < 7; i++) {
             LocalDate day = today.minusDays(today.getDayOfWeek().getValue() - 1).plusDays(i);
             long tasksCompletedOnDay = tasks.stream()
-                    .filter(t -> t.isCompleted() && t.getCreatedAt().toLocalDate().equals(day))
+                    .filter(t -> t.isCompleted() && t.getCreatedAt().equals(day))
                     .count();
             productivity.add(new DashboardSummaryDTO.ProductivityDTO(days[i], (int) tasksCompletedOnDay));
         }
