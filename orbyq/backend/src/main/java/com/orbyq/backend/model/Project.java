@@ -1,14 +1,14 @@
 package com.orbyq.backend.model;
 
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "projects")
 public class Project {
+
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @ManyToOne
@@ -16,8 +16,12 @@ public class Project {
     private User user;
 
     private String name;
+
+    @Column(name = "color")
     private String color;
-    private LocalDateTime createdAt;
+
+    @Version
+    private long version;
 
     // Getters and setters
     public UUID getId() { return id; }
@@ -28,6 +32,6 @@ public class Project {
     public void setName(String name) { this.name = name; }
     public String getColor() { return color; }
     public void setColor(String color) { this.color = color; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public long getVersion() { return version; }
+    public void setVersion(long version) { this.version = version; }
 }
