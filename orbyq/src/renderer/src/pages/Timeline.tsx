@@ -12,6 +12,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import Loader from "@renderer/components/Loader"
 
 interface TimelineData {
   projects: {
@@ -219,7 +220,11 @@ const Timeline = () => {
   };
 
   if (isLoading) {
-    return <div className="p-4">Loading timeline...</div>;
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <Loader size="md" text="Loading your timeline..." />
+      </div>
+    );
   }
 
   if (error) {
@@ -477,26 +482,27 @@ const Timeline = () => {
                         </Button>
                       </div>
                       <div className="relative bg-muted rounded-md" style={{ height: `${rowHeight}px`, minHeight: '48px' }}>
-                        {Object.entries(groupedTasks).flatMap(([startDay, tasks]) =>
-                          tasks.map((task, taskIndex) => {
-                            const { left, width } = calculateTaskPosition(task.startDay, task.duration);
-                            if (left < 0 || width <= 0) return null;
+                        {//@ts-ignore
+                          Object.entries(groupedTasks).flatMap(([startDay, tasks]) =>
+                            tasks.map((task, taskIndex) => {
+                              const { left, width } = calculateTaskPosition(task.startDay, task.duration);
+                              if (left < 0 || width <= 0) return null;
 
-                            return (
-                              <div
-                                key={task.id}
-                                className={`absolute h-10 rounded-md ${project.color} bg-opacity-20 border-l-4 ${project.color} flex items-center px-2`}
-                                style={{
-                                  left: `${left}%`,
-                                  width: `${width}%`,
-                                  top: `${taskIndex * 48}px`,
-                                }}
-                              >
-                                <span className="text-xs font-medium text-foreground truncate">{task.name}</span>
-                              </div>
-                            );
-                          })
-                        )}
+                              return (
+                                <div
+                                  key={task.id}
+                                  className={`absolute h-10 rounded-md ${project.color} bg-opacity-20 border-l-4 ${project.color} flex items-center px-2`}
+                                  style={{
+                                    left: `${left}%`,
+                                    width: `${width}%`,
+                                    top: `${taskIndex * 48}px`,
+                                  }}
+                                >
+                                  <span className="text-xs font-medium text-foreground truncate">{task.name}</span>
+                                </div>
+                              );
+                            })
+                          )}
                         {project.tasks.length === 0 && (
                           <p className="text-muted-foreground text-center pt-4">No tasks in this range.</p>
                         )}

@@ -6,6 +6,7 @@ import { Calendar, CheckCircle2, Clock, ListTodo, Lightbulb, Kanban } from "luci
 import { Progress } from "@/components/ui/progress"
 import { motion } from "framer-motion"
 import { useAuth } from '../context/AuthContext'
+import Loader from "@renderer/components/Loader"
 
 interface DashboardSummary {
   userName: string;
@@ -82,7 +83,11 @@ const Dashboard = () => {
   };
 
   if (isLoading) {
-    return <div className="p-4">Loading dashboard...</div>;
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <Loader size="md" text="Loading your workspace..." />
+      </div>
+    );
   }
 
   if (error) {

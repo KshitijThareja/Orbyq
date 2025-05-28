@@ -53,6 +53,19 @@ public class TimelineController {
         );
     }
 
+    @PostMapping("/project")
+    public void createProject(
+        @RequestBody ProjectRequest projectRequest,
+        Authentication authentication
+    ) {
+        String username = authentication.getName();
+        timelineService.createProject(
+            username,
+            projectRequest.name,
+            projectRequest.color
+        );
+    }
+
     public static class TaskRequest {
         private String title;
         private String description;
@@ -81,6 +94,16 @@ public class TimelineController {
 
         public String getProjectId() { return projectId; }
         public void setProjectId(String projectId) { this.projectId = projectId; }
+        public String getColor() { return color; }
+        public void setColor(String color) { this.color = color; }
+    }
+
+    public static class ProjectRequest {
+        private String name;
+        private String color;
+
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
         public String getColor() { return color; }
         public void setColor(String color) { this.color = color; }
     }

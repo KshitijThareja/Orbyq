@@ -14,6 +14,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import Loader from "@renderer/components/Loader"
 
 interface TaskBoardData {
   columns: {
@@ -286,7 +287,11 @@ const TaskBoard = () => {
   }, [shouldShowTask]);
 
   if (isLoading) {
-    return <div className="p-4">Loading task board...</div>;
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <Loader size="md" text="Loading your taskboard..." />
+      </div>
+    );
   }
 
   if (error) {
@@ -528,9 +533,8 @@ const TaskBoard = () => {
                     <div
                       ref={provided.innerRef}
                       {...provided.droppableProps}
-                      className={`flex-1 p-2 rounded-lg overflow-y-auto ${
-                        snapshot.isDraggingOver ? "bg-muted" : "bg-background"
-                      } border border-border`}
+                      className={`flex-1 p-2 rounded-lg overflow-y-auto ${snapshot.isDraggingOver ? "bg-muted" : "bg-background"
+                        } border border-border`}
                     >
                       {tasks.map((task, index) => (
                         <div
@@ -543,9 +547,8 @@ const TaskBoard = () => {
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                className={`mb-3 shadow-sm bg-background border-border ${
-                                  snapshot.isDragging ? "shadow-md" : ""
-                                }`}
+                                className={`mb-3 shadow-sm bg-background border-border ${snapshot.isDragging ? "shadow-md" : ""
+                                  }`}
                               >
                                 <CardHeader className="p-3 pb-0">
                                   <div className="flex justify-between items-start">
