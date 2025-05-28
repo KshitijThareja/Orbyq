@@ -4,13 +4,14 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight, Plus, Calendar, Filter } from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus, Calendar, Filter, Palette } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { motion } from "framer-motion"
 import { useAuth } from '../context/AuthContext'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 
 interface TimelineData {
   projects: {
@@ -20,7 +21,7 @@ interface TimelineData {
     tasks: {
       id: string;
       name: string;
-      startDay: string; // ISO date string
+      startDay: string;
       duration: number;
       completed: boolean;
     }[];
@@ -28,7 +29,7 @@ interface TimelineData {
   upcomingMilestones: {
     name: string;
     project: string;
-    date: string; // ISO date string
+    date: string;
   }[];
   projectProgress: { [key: string]: number };
 }
@@ -40,17 +41,30 @@ const Timeline = () => {
   const [timelineData, setTimelineData] = useState<TimelineData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = useState(false);
+  const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
+  const [isEditProjectDialogOpen, setIsEditProjectDialogOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<{ id: string; name: string } | null>(null);
   const [newTask, setNewTask] = useState({
     title: "",
+    description: "",
+    priority: "MEDIUM",
     projectId: "",
     startDay: "",
     duration: 1,
   });
+  const [filters, setFilters] = useState({
+    status: "ALL",
+    priority: "ALL",
+  });
+  const [newProjectColor, setNewProjectColor] = useState("");
 
   const fetchTimelineData = async () => {
     try {
-      const data = await callBackend<TimelineData>('timeline');
+      const params = new URLSearchParams();
+      if (filters.status && filters.status !== "ALL") params.append("status", filters.status);
+      if (filters.priority && filters.priority !== "ALL") params.append("priority", filters.priority);
+      const data = await callBackend<TimelineData>(`timeline?${params.toString()}`);
       setTimelineData(data);
       setIsLoading(false);
     } catch (err: any) {
@@ -61,7 +75,7 @@ const Timeline = () => {
 
   useEffect(() => {
     fetchTimelineData();
-  }, []);
+  }, [filters]);
 
   const getDateRange = () => {
     const startDate = new Date(currentDate);
@@ -121,21 +135,16 @@ const Timeline = () => {
     const rangeStart = new Date(startDate);
     const rangeEnd = new Date(endDate);
 
-    // If the task starts after the range ends or ends before the range starts, don't display it
     const taskEnd = new Date(taskStart);
     taskEnd.setDate(taskStart.getDate() + taskDuration - 1);
     if (taskStart > rangeEnd || taskEnd < rangeStart) {
-      return { left: -1, width: 0 }; // Out of range
+      return { left: -1, width: 0 };
     }
 
-    // Calculate the number of days in the current view
     const totalDaysInView = days.length;
-
-    // Adjust start and end to fit within the range
     const effectiveStart = taskStart < rangeStart ? rangeStart : taskStart;
     const effectiveEnd = taskEnd > rangeEnd ? rangeEnd : taskEnd;
 
-    // Calculate position and width as percentages
     const daysFromRangeStart = Math.round((effectiveStart.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24));
     const effectiveDuration = Math.round((effectiveEnd.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
@@ -145,24 +154,63 @@ const Timeline = () => {
     return { left, width };
   };
 
+  const groupTasksByStartDay = (tasks: TimelineData["projects"][0]["tasks"]) => {
+    const grouped: { [key: string]: typeof tasks } = {};
+    tasks.forEach((task) => {
+      const startDay = task.startDay;
+      if (!grouped[startDay]) {
+        grouped[startDay] = [];
+      }
+      grouped[startDay].push(task);
+    });
+    return grouped;
+  };
+
   const handleAddTask = async () => {
     if (!newTask.title || !newTask.projectId || !newTask.startDay || newTask.duration < 1) {
-      setError("All fields are required, and duration must be at least 1 day");
+      setError("Title, project, start date, and duration (at least 1 day) are required");
       return;
     }
 
     try {
       await callBackend<void>('timeline/task', 'POST', {
         title: newTask.title,
+        description: newTask.description,
+        priority: newTask.priority,
         projectId: newTask.projectId,
         startDay: newTask.startDay,
         duration: newTask.duration,
       });
-      setIsDialogOpen(false);
-      setNewTask({ title: "", projectId: "", startDay: "", duration: 1 });
+      setIsAddTaskDialogOpen(false);
+      setNewTask({ title: "", description: "", priority: "MEDIUM", projectId: "", startDay: "", duration: 1 });
       fetchTimelineData();
     } catch (err: any) {
       setError('Failed to add task: ' + (err.message || 'Unknown error'));
+    }
+  };
+
+  const handleApplyFilters = () => {
+    setIsFilterDialogOpen(false);
+    fetchTimelineData();
+  };
+
+  const handleUpdateProjectColor = async () => {
+    if (!selectedProject || !newProjectColor) {
+      setError("Project and color are required");
+      return;
+    }
+
+    try {
+      await callBackend<void>('timeline/project/color', 'POST', {
+        projectId: selectedProject.id,
+        color: newProjectColor,
+      });
+      setIsEditProjectDialogOpen(false);
+      setNewProjectColor("");
+      setSelectedProject(null);
+      fetchTimelineData();
+    } catch (err: any) {
+      setError('Failed to update project color: ' + (err.message || 'Unknown error'));
     }
   };
 
@@ -190,10 +238,66 @@ const Timeline = () => {
           <p className="text-muted-foreground">Project schedule and milestones</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="border-border text-foreground hover:bg-muted">
-            <Filter size={14} className="mr-1" /> Filter
-          </Button>
-          <Dialog.Root open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog.Root open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
+            <Dialog.Trigger asChild>
+              <Button variant="outline" size="sm" className="border-border text-foreground hover:bg-muted">
+                <Filter size={14} className="mr-1" /> Filter
+              </Button>
+            </Dialog.Trigger>
+            <Dialog.Portal>
+              <Dialog.Overlay className="fixed inset-0 bg-black/50" />
+              <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background p-6 rounded-lg border border-border w-full max-w-md">
+                <Dialog.Title className="text-lg font-medium text-foreground">Filter Tasks</Dialog.Title>
+                <Dialog.Description className="text-muted-foreground mt-2">
+                  Filter tasks by status and priority.
+                </Dialog.Description>
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <Label htmlFor="statusFilter" className="text-muted-foreground">Status</Label>
+                    <Select
+                      value={filters.status}
+                      onValueChange={(value) => setFilters({ ...filters, status: value })}
+                    >
+                      <SelectTrigger className="border-border text-foreground">
+                        <SelectValue placeholder="Select status" className="text-foreground" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border-border text-foreground">
+                        <SelectItem value="ALL">All</SelectItem>
+                        <SelectItem value="TODO">To Do</SelectItem>
+                        <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                        <SelectItem value="REVIEW">Review</SelectItem>
+                        <SelectItem value="DONE">Done</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="priorityFilter" className="text-muted-foreground">Priority</Label>
+                    <Select
+                      value={filters.priority}
+                      onValueChange={(value) => setFilters({ ...filters, priority: value })}
+                    >
+                      <SelectTrigger className="border-border text-foreground">
+                        <SelectValue placeholder="Select priority" className="text-foreground" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border-border text-foreground">
+                        <SelectItem value="ALL">All</SelectItem>
+                        <SelectItem value="LOW">Low</SelectItem>
+                        <SelectItem value="MEDIUM">Medium</SelectItem>
+                        <SelectItem value="HIGH">High</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 mt-6">
+                  <Dialog.Close asChild>
+                    <Button variant="outline" className="border-border text-foreground hover:bg-muted">Cancel</Button>
+                  </Dialog.Close>
+                  <Button onClick={handleApplyFilters} className="bg-primary hover:bg-primary/90 text-primary-foreground">Apply</Button>
+                </div>
+              </Dialog.Content>
+            </Dialog.Portal>
+          </Dialog.Root>
+          <Dialog.Root open={isAddTaskDialogOpen} onOpenChange={setIsAddTaskDialogOpen}>
             <Dialog.Trigger asChild>
               <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
                 <Plus size={14} className="mr-1" /> Add Task
@@ -203,6 +307,9 @@ const Timeline = () => {
               <Dialog.Overlay className="fixed inset-0 bg-black/50" />
               <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background p-6 rounded-lg border border-border w-full max-w-md">
                 <Dialog.Title className="text-lg font-medium text-foreground">Add New Task</Dialog.Title>
+                <Dialog.Description className="text-muted-foreground mt-2">
+                  Create a new task by filling in the details below.
+                </Dialog.Description>
                 <div className="space-y-4 mt-4">
                   <div>
                     <Label htmlFor="title" className="text-muted-foreground">Task Title</Label>
@@ -212,6 +319,31 @@ const Timeline = () => {
                       onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
                       className="border-border text-foreground"
                     />
+                  </div>
+                  <div>
+                    <Label htmlFor="description" className="text-muted-foreground">Description</Label>
+                    <Textarea
+                      id="description"
+                      value={newTask.description}
+                      onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                      className="border-border text-foreground"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="priority" className="text-muted-foreground">Difficulty (Priority)</Label>
+                    <Select
+                      value={newTask.priority}
+                      onValueChange={(value) => setNewTask({ ...newTask, priority: value })}
+                    >
+                      <SelectTrigger className="border-border text-foreground">
+                        <SelectValue placeholder="Select priority" className="text-foreground" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border-border text-foreground">
+                        <SelectItem value="LOW">Low</SelectItem>
+                        <SelectItem value="MEDIUM">Medium</SelectItem>
+                        <SelectItem value="HIGH">High</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label htmlFor="project" className="text-muted-foreground">Project</Label>
@@ -311,38 +443,68 @@ const Timeline = () => {
             </div>
 
             <div className="space-y-6">
-              {timelineData.projects.map((project, projectIndex) => (
-                <motion.div
-                  key={project.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: projectIndex * 0.1 }}
-                >
-                  <div className="flex items-center mb-2">
-                    <div className={`w-3 h-3 rounded-full ${project.color} mr-2`}></div>
-                    <h3 className="font-medium text-sm text-foreground">{project.name}</h3>
-                  </div>
-                  <div className="relative h-12 bg-muted rounded-md">
-                    {project.tasks.map((task) => {
-                      const { left, width } = calculateTaskPosition(task.startDay, task.duration);
-                      if (left < 0 || width <= 0) return null; // Skip tasks outside the current range
+              {timelineData.projects.length === 0 ? (
+                <p className="text-muted-foreground text-center">No projects available.</p>
+              ) : (
+                timelineData.projects.map((project, projectIndex) => {
+                  const groupedTasks = groupTasksByStartDay(project.tasks);
+                  const maxOverlaps = Object.values(groupedTasks).reduce((max, group) => Math.max(max, group.length), 0);
+                  const rowHeight = maxOverlaps * 48;
 
-                      return (
-                        <div
-                          key={task.id}
-                          className={`absolute top-1 h-10 rounded-md ${project.color} bg-opacity-20 border-l-4 ${project.color} flex items-center px-2`}
-                          style={{
-                            left: `${left}%`,
-                            width: `${width}%`,
-                          }}
-                        >
-                          <span className="text-xs font-medium text-foreground truncate">{task.name}</span>
+                  return (
+                    <motion.div
+                      key={project.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: projectIndex * 0.1 }}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center">
+                          <div className={`w-3 h-3 rounded-full ${project.color} mr-2`}></div>
+                          <h3 className="font-medium text-sm text-foreground">{project.name}</h3>
                         </div>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              ))}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedProject({ id: project.id, name: project.name });
+                            setNewProjectColor(project.color);
+                            setIsEditProjectDialogOpen(true);
+                          }}
+                          className="text-muted-foreground hover:bg-muted"
+                        >
+                          <Palette size={14} className="mr-1" /> Edit Color
+                        </Button>
+                      </div>
+                      <div className="relative bg-muted rounded-md" style={{ height: `${rowHeight}px`, minHeight: '48px' }}>
+                        {Object.entries(groupedTasks).flatMap(([startDay, tasks]) =>
+                          tasks.map((task, taskIndex) => {
+                            const { left, width } = calculateTaskPosition(task.startDay, task.duration);
+                            if (left < 0 || width <= 0) return null;
+
+                            return (
+                              <div
+                                key={task.id}
+                                className={`absolute h-10 rounded-md ${project.color} bg-opacity-20 border-l-4 ${project.color} flex items-center px-2`}
+                                style={{
+                                  left: `${left}%`,
+                                  width: `${width}%`,
+                                  top: `${taskIndex * 48}px`,
+                                }}
+                              >
+                                <span className="text-xs font-medium text-foreground truncate">{task.name}</span>
+                              </div>
+                            );
+                          })
+                        )}
+                        {project.tasks.length === 0 && (
+                          <p className="text-muted-foreground text-center pt-4">No tasks in this range.</p>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })
+              )}
             </div>
           </div>
         </CardContent>
@@ -399,6 +561,45 @@ const Timeline = () => {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog.Root open={isEditProjectDialogOpen} onOpenChange={setIsEditProjectDialogOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/50" />
+          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background p-6 rounded-lg border border-border w-full max-w-md">
+            <Dialog.Title className="text-lg font-medium text-foreground">Edit Project Color</Dialog.Title>
+            <Dialog.Description className="text-muted-foreground mt-2">
+              Set a custom color for the project.
+            </Dialog.Description>
+            <div className="space-y-4 mt-4">
+              <div>
+                <Label htmlFor="projectName" className="text-muted-foreground">Project</Label>
+                <Input
+                  id="projectName"
+                  value={selectedProject?.name || ""}
+                  disabled
+                  className="border-border text-foreground"
+                />
+              </div>
+              <div>
+                <Label htmlFor="color" className="text-muted-foreground">Color Class (e.g., bg-blue-500)</Label>
+                <Input
+                  id="color"
+                  value={newProjectColor}
+                  onChange={(e) => setNewProjectColor(e.target.value)}
+                  placeholder="e.g., bg-blue-500"
+                  className="border-border text-foreground"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <Dialog.Close asChild>
+                <Button variant="outline" className="border-border text-foreground hover:bg-muted">Cancel</Button>
+              </Dialog.Close>
+              <Button onClick={handleUpdateProjectColor} className="bg-primary hover:bg-primary/90 text-primary-foreground">Save</Button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 };
