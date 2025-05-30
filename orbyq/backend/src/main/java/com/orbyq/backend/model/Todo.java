@@ -2,65 +2,66 @@ package com.orbyq.backend.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
-@Table(name = "todos")
 public class Todo {
+
+    public enum Priority {
+        LOW, MEDIUM, HIGH
+    }
+
+    public enum Category {
+        WORK, PERSONAL, LEARNING
+    }
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
-    @Column(nullable = false)
-    private String title;
-
-    @Column(nullable = false)
-    private boolean completed = false;
-
-    @Column(name = "due_date")
-    private LocalDate dueDate;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Category category = Category.WORK;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Priority priority = Priority.MEDIUM;
-
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    public enum Category {
-        WORK,
-        PERSONAL,
-        LEARNING
-    }
+    private String title;
 
-    public enum Priority {
-        HIGH,
-        MEDIUM,
-        LOW
-    }
+    private boolean completed;
 
-    // Constructors
-    public Todo() {}
+    @Enumerated(EnumType.STRING)
+    private Priority priority;
 
-    public Todo(String title, LocalDate dueDate, Category category, Priority priority, User user) {
-        this.title = title;
-        this.dueDate = dueDate;
-        this.category = category;
-        this.priority = priority;
-        this.user = user;
+    private LocalDate dueDate;
+
+    @Enumerated(EnumType.STRING)
+    private Category category;
+
+    @Version
+    private Long version;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
     }
 
     // Getters and Setters
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(UUID id) {
         this.id = id;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
     }
 
     public String getTitle() {
@@ -79,6 +80,14 @@ public class Todo {
         this.completed = completed;
     }
 
+    public Priority getPriority() {
+        return priority;
+    }
+
+    public void setPriority(Priority priority) {
+        this.priority = priority;
+    }
+
     public LocalDate getDueDate() {
         return dueDate;
     }
@@ -95,19 +104,15 @@ public class Todo {
         this.category = category;
     }
 
-    public Priority getPriority() {
-        return priority;
+    public Long getVersion() {
+        return version;
     }
 
-    public void setPriority(Priority priority) {
-        this.priority = priority;
+    public void setVersion(Long version) {
+        this.version = version;
     }
 
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
     }
 }

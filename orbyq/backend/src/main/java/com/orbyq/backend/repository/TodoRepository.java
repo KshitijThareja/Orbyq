@@ -2,35 +2,29 @@ package com.orbyq.backend.repository;
 
 import com.orbyq.backend.model.Todo;
 import com.orbyq.backend.model.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-import java.time.LocalDate;
-import java.util.List;
+import java.util.UUID;
 
-public interface TodoRepository extends JpaRepository<Todo, Long> {
-    List<Todo> findByUserOrderByDueDateAsc(User user);
-    
-    List<Todo> findByUserAndCategoryOrderByDueDateAsc(User user, Todo.Category category);
-    
-    List<Todo> findByUserAndCompletedOrderByDueDateAsc(User user, boolean completed);
-    
-    List<Todo> findByUserAndPriorityOrderByDueDateAsc(User user, Todo.Priority priority);
-    
-    @Query("SELECT t FROM Todo t WHERE t.user = :user AND t.dueDate >= :startDate AND t.dueDate <= :endDate AND t.completed = false ORDER BY t.dueDate ASC")
-    List<Todo> findUpcomingTodos(
-        @Param("user") User user,
-        @Param("startDate") LocalDate startDate,
-        @Param("endDate") LocalDate endDate
-    );
-    
-    @Query("SELECT COUNT(t) FROM Todo t WHERE t.user = :user AND t.completed = :completed")
-    long countByUserAndCompleted(@Param("user") User user, @Param("completed") boolean completed);
-    
-    @Query("SELECT COUNT(t) FROM Todo t WHERE t.user = :user AND t.category = :category")
-    long countByUserAndCategory(@Param("user") User user, @Param("category") Todo.Category category);
-    
-    @Query("SELECT COUNT(t) FROM Todo t WHERE t.user = :user AND t.priority = :priority")
-    long countByUserAndPriority(@Param("user") User user, @Param("priority") Todo.Priority priority);
+public interface TodoRepository extends JpaRepository<Todo, UUID>, JpaSpecificationExecutor<Todo> {
+
+    Page<Todo> findByUser(User user, Pageable pageable);
+
+    Page<Todo> findByUserAndCompleted(User user, boolean completed, Pageable pageable);
+
+    Page<Todo> findByUserAndPriority(User user, Todo.Priority priority, Pageable pageable);
+
+    Page<Todo> findByUserAndCategory(User user, Todo.Category category, Pageable pageable);
+
+    Page<Todo> findByUserAndCompletedAndPriority(User user, boolean completed, Todo.Priority priority, Pageable pageable);
+
+    Page<Todo> findByUserAndCompletedAndCategory(User user, boolean completed, Todo.Category category, Pageable pageable);
+
+    Page<Todo> findByUserAndPriorityAndCategory(User user, Todo.Priority priority, Todo.Category category, Pageable pageable);
+
+    Page<Todo> findByUserAndCompletedAndPriorityAndCategory(
+            User user, boolean completed, Todo.Priority priority, Todo.Category category, Pageable pageable);
 }

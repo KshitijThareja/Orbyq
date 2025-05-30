@@ -1,144 +1,216 @@
 package com.orbyq.backend.service;
 
-import com.orbyq.backend.dto.TodoRequest;
-import com.orbyq.backend.dto.TodoResponse;
 import com.orbyq.backend.model.Todo;
 import com.orbyq.backend.model.User;
 import com.orbyq.backend.repository.TodoRepository;
+import com.orbyq.backend.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 public class TodoService {
-    private final TodoRepository todoRepository;
 
-    public TodoService(TodoRepository todoRepository) {
-        this.todoRepository = todoRepository;
-    }
+    @Autowired
+    private TodoRepository todoRepository;
 
-    @Transactional
-    public TodoResponse createTodo(TodoRequest request, User currentUser) {
-        Todo todo = new Todo(
-            request.getTitle(),
-            request.getDueDate(),
-            request.getCategory() != null ? request.getCategory() : Todo.Category.WORK,
-            request.getPriority() != null ? request.getPriority() : Todo.Priority.MEDIUM,
-            currentUser
-        );
+    @Autowired
+    private UserRepository userRepository;
 
-        Todo savedTodo = todoRepository.save(todo);
-        return convertToResponse(savedTodo);
-    }
+    public PaginatedTodosDTO getTodos(
+            String username,
+            int page,
+            int size,
+            String sortBy,
+            String sortDirection,
+            Boolean completed,
+            String priority,
+            String category
+    ) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
 
-    @Transactional(readOnly = true)
-    public List<TodoResponse> getAllTodos(User currentUser) {
-        return todoRepository.findByUserOrderByDueDateAsc(currentUser)
-                .stream()
-                .map(this::convertToResponse)
-                .collect(Collectors.toList());
-    }
+        String normalizedPriority = priority != null ? priority.toLowerCase() : null;
+        String normalizedCategory = category != null ? category.toLowerCase() : null;
+        String normalizedSortBy = sortBy != null ? sortBy.toLowerCase() : "createdat";
+        String normalizedSortDirection = sortDirection != null && sortDirection.equalsIgnoreCase("asc") ? "asc" : "desc";
 
-    @Transactional(readOnly = true)
-    public List<TodoResponse> getTodosByCategory(User currentUser, Todo.Category category) {
-        return todoRepository.findByUserAndCategoryOrderByDueDateAsc(currentUser, category)
-                .stream()
-                .map(this::convertToResponse)
-                .collect(Collectors.toList());
-    }
-
-    @Transactional(readOnly = true)
-    public List<TodoResponse> getUpcomingTodos(User currentUser) {
-        LocalDate now = LocalDate.now();
-        LocalDate endDate = now.plusDays(7);
-        return todoRepository.findUpcomingTodos(currentUser, now, endDate)
-                .stream()
-                .map(this::convertToResponse)
-                .collect(Collectors.toList());
-    }
-
-    @Transactional
-    public TodoResponse updateTodo(Long todoId, TodoRequest request, User currentUser) {
-        Todo todo = todoRepository.findById(todoId)
-                .orElseThrow(() -> new IllegalArgumentException("Todo not found"));
-
-        if (!todo.getUser().getId().equals(currentUser.getId())) {
-            throw new IllegalArgumentException("Not authorized to update this todo");
+        String sortField;
+        switch (normalizedSortBy) {
+            case "title":
+                sortField = "title";
+                break;
+            case "priority":
+                sortField = "priority";
+                break;
+            case "duedate":
+                sortField = "dueDate";
+                break;
+            case "createdat":
+            default:
+                sortField = "createdAt";
         }
 
-        if (request.getTitle() != null) todo.setTitle(request.getTitle());
-        if (request.getDueDate() != null) todo.setDueDate(request.getDueDate());
-        if (request.getCategory() != null) todo.setCategory(request.getCategory());
-        if (request.getPriority() != null) todo.setPriority(request.getPriority());
+        Sort sort = Sort.by(
+                normalizedSortDirection.equals("asc") ? Sort.Direction.ASC : Sort.Direction.DESC,
+                sortField
+        );
+        Pageable pageable = PageRequest.of(page, size, sort);
 
-        Todo updatedTodo = todoRepository.save(todo);
-        return convertToResponse(updatedTodo);
+        Specification<Todo> spec = Specification.where((root, query, cb) -> cb.equal(root.get("user"), user));
+        if (completed != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("completed"), completed));
+        }
+        if (normalizedPriority != null && !normalizedPriority.equals("all")) {
+            try {
+                Todo.Priority priorityEnum = Todo.Priority.valueOf(normalizedPriority.toUpperCase());
+                spec = spec.and((root, query, cb) -> cb.equal(root.get("priority"), priorityEnum));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid priority: " + normalizedPriority);
+            }
+        }
+        if (normalizedCategory != null && !normalizedCategory.equals("all")) {
+            try {
+                Todo.Category categoryEnum = Todo.Category.valueOf(normalizedCategory.toUpperCase());
+                spec = spec.and((root, query, cb) -> cb.equal(root.get("category"), categoryEnum));
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid category: " + normalizedCategory);
+            }
+        }
+
+        Page<Todo> todoPage = todoRepository.findAll(spec, pageable);
+
+        List<TodoDTO> todos = todoPage.getContent().stream().map(todo -> new TodoDTO(
+                todo.getId().toString(),
+                todo.getTitle(),
+                todo.isCompleted(),
+                todo.getPriority().toString().toLowerCase(),
+                todo.getDueDate() != null ? todo.getDueDate().toString() : "",
+                todo.getCategory().toString().toLowerCase()
+        )).collect(Collectors.toList());
+
+        return new PaginatedTodosDTO(todos, todoPage.getTotalPages(), todoPage.getTotalElements());
     }
 
-    @Transactional
-    public void deleteTodo(Long todoId, User currentUser) {
-        Todo todo = todoRepository.findById(todoId)
-                .orElseThrow(() -> new IllegalArgumentException("Todo not found"));
+    public void addTodo(String username, String title, String priority, String dueDate, String category) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
 
-        if (!todo.getUser().getId().equals(currentUser.getId())) {
-            throw new IllegalArgumentException("Not authorized to delete this todo");
+        Todo todo = new Todo();
+        todo.setUser(user);
+        todo.setTitle(title);
+        todo.setCompleted(false);
+        try {
+            todo.setPriority(Todo.Priority.valueOf(priority.toUpperCase()));
+            todo.setCategory(Todo.Category.valueOf(category.toUpperCase()));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid priority or category: " + e.getMessage());
+        }
+        todo.setDueDate(dueDate != null && !dueDate.isEmpty() ? LocalDate.parse(dueDate) : null);
+        todo.setVersion(0L);
+
+        todoRepository.save(todo);
+    }
+
+    public void updateTodoCompletion(String username, String todoId, boolean completed) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+
+        Todo todo = todoRepository.findById(UUID.fromString(todoId))
+                .orElseThrow(() -> new IllegalArgumentException("Todo not found: " + todoId));
+
+        if (!todo.getUser().getId().equals(user.getId())) {
+            throw new SecurityException("Unauthorized to update this todo");
+        }
+
+        todo.setCompleted(completed);
+        todoRepository.save(todo);
+    }
+
+    public void updateTodo(String username, String todoId, String title, String priority, String dueDate, String category) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+
+        Todo todo = todoRepository.findById(UUID.fromString(todoId))
+                .orElseThrow(() -> new IllegalArgumentException("Todo not found: " + todoId));
+
+        if (!todo.getUser().getId().equals(user.getId())) {
+            throw new SecurityException("Unauthorized to update this todo");
+        }
+
+        todo.setTitle(title);
+        try {
+            todo.setPriority(Todo.Priority.valueOf(priority.toUpperCase()));
+            todo.setCategory(Todo.Category.valueOf(category.toUpperCase()));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid priority or category: " + e.getMessage());
+        }
+        todo.setDueDate(dueDate != null && !dueDate.isEmpty() ? LocalDate.parse(dueDate) : null);
+        todoRepository.save(todo);
+    }
+
+    public void deleteTodo(String username, String todoId) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+
+        Todo todo = todoRepository.findById(UUID.fromString(todoId))
+                .orElseThrow(() -> new IllegalArgumentException("Todo not found: " + todoId));
+
+        if (!todo.getUser().getId().equals(user.getId())) {
+            throw new SecurityException("Unauthorized to delete this todo");
         }
 
         todoRepository.delete(todo);
     }
 
-    @Transactional
-    public TodoResponse toggleTodoCompletion(Long todoId, User currentUser) {
-        Todo todo = todoRepository.findById(todoId)
-                .orElseThrow(() -> new IllegalArgumentException("Todo not found"));
+    public static class TodoDTO {
+        private String id;
+        private String title;
+        private boolean completed;
+        private String priority;
+        private String dueDate;
+        private String category;
 
-        if (!todo.getUser().getId().equals(currentUser.getId())) {
-            throw new IllegalArgumentException("Not authorized to update this todo");
+        public TodoDTO(String id, String title, boolean completed, String priority, String dueDate, String category) {
+            this.id = id;
+            this.title = title;
+            this.completed = completed;
+            this.priority = priority;
+            this.dueDate = dueDate;
+            this.category = category;
         }
 
-        todo.setCompleted(!todo.isCompleted());
-        Todo updatedTodo = todoRepository.save(todo);
-        return convertToResponse(updatedTodo);
+        public String getId() { return id; }
+        public String getTitle() { return title; }
+        public boolean isCompleted() { return completed; }
+        public String getPriority() { return priority; }
+        public String getDueDate() { return dueDate; }
+        public String getCategory() { return category; }
     }
 
-    @Transactional(readOnly = true)
-    public Map<String, Object> getTodoSummary(User currentUser) {
-        long completedCount = todoRepository.countByUserAndCompleted(currentUser, true);
-        long remainingCount = todoRepository.countByUserAndCompleted(currentUser, false);
+    public static class PaginatedTodosDTO {
+        private List<TodoDTO> todos;
+        private int totalPages;
+        private long totalElements;
 
-        Map<Todo.Category, Long> categoryCounts = Map.of(
-            Todo.Category.WORK, todoRepository.countByUserAndCategory(currentUser, Todo.Category.WORK),
-            Todo.Category.PERSONAL, todoRepository.countByUserAndCategory(currentUser, Todo.Category.PERSONAL),
-            Todo.Category.LEARNING, todoRepository.countByUserAndCategory(currentUser, Todo.Category.LEARNING)
-        );
+        public PaginatedTodosDTO(List<TodoDTO> todos, int totalPages, long totalElements) {
+            this.todos = todos;
+            this.totalPages = totalPages;
+            this.totalElements = totalElements;
+        }
 
-        Map<Todo.Priority, Long> priorityCounts = Map.of(
-            Todo.Priority.HIGH, todoRepository.countByUserAndPriority(currentUser, Todo.Priority.HIGH),
-            Todo.Priority.MEDIUM, todoRepository.countByUserAndPriority(currentUser, Todo.Priority.MEDIUM),
-            Todo.Priority.LOW, todoRepository.countByUserAndPriority(currentUser, Todo.Priority.LOW)
-        );
-
-        return Map.of(
-            "completed", completedCount,
-            "remaining", remainingCount,
-            "categories", categoryCounts,
-            "priorities", priorityCounts,
-            "upcoming", getUpcomingTodos(currentUser)
-        );
-    }
-
-    private TodoResponse convertToResponse(Todo todo) {
-        TodoResponse response = new TodoResponse();
-        response.setId(todo.getId());
-        response.setTitle(todo.getTitle());
-        response.setCompleted(todo.isCompleted());
-        response.setDueDate(todo.getDueDate());
-        response.setCategory(todo.getCategory());
-        response.setPriority(todo.getPriority());
-        return response;
+        public List<TodoDTO> getTodos() { return todos; }
+        public int getTotalPages() { return totalPages; }
+        public long getTotalElements() { return totalElements; }
     }
 }
