@@ -7,7 +7,7 @@ interface AuthContextType {
     register: (email: string, password: string, name: string) => Promise<void>;
     logout: () => void;
     isAuthenticated: boolean;
-    callBackend: <T>(endpoint: string, method?: string, data?: any) => Promise<T>;
+    callBackend: <T>(endpoint: string, method?: string, data?: any, isMultipart?: boolean) => Promise<T>;
     isValidating: boolean;
 }
 
@@ -53,137 +53,139 @@ export function AuthProvider({ children }: AuthProviderProps) {
         [navigate]
     );
 
-  const logout = useCallback(() => {
-    window.electronStore.delete('token');
-    window.electronStore.delete('refreshToken');
-    setToken(null);
-    setRefreshToken(null);
-    setIsAuthenticated(false);
-    navigateTo('/login');
-  }, [navigateTo]);
+    const logout = useCallback(() => {
+        window.electronStore.delete('token');
+        window.electronStore.delete('refreshToken');
+        setToken(null);
+        setRefreshToken(null);
+        setIsAuthenticated(false);
+        navigateTo('/login');
+    }, [navigateTo]);
 
-  useEffect(() => {
-    let isMounted = true;
-    const validateToken = async () => {
-      if (!isMounted) return;
-      if (isAuthenticated) {
-        setIsValidating(false);
-        return;
-      }
-      setIsValidating(true);
-      try {
-        const savedToken = window.electronStore.get('token');
-        const savedRefreshToken = window.electronStore.get('refreshToken');
+    useEffect(() => {
+        let isMounted = true;
+        const validateToken = async () => {
+            if (!isMounted) return;
+            if (isAuthenticated) {
+                setIsValidating(false);
+                return;
+            }
+            setIsValidating(true);
+            try {
+                const savedToken = window.electronStore.get('token');
+                const savedRefreshToken = window.electronStore.get('refreshToken');
 
-        if (!savedToken || !savedRefreshToken) {
-          setIsValidating(false);
-          return;
-        }
+                if (!savedToken || !savedRefreshToken) {
+                    setIsValidating(false);
+                    return;
+                }
 
+                try {
+                    // @ts-ignore
+                    await window.api.callBackend('auth/validate', 'GET', null, savedToken);
+                    if (isMounted) {
+                        setToken(savedToken);
+                        setRefreshToken(savedRefreshToken);
+                        setIsAuthenticated(true);
+                    }
+                } catch (error) {
+                    console.error('Token validation failed:', error);
+                    if (isMounted) {
+                        window.electronStore.delete('token');
+                        window.electronStore.delete('refreshToken');
+                        navigateTo('/login');
+                    }
+                }
+            } catch (error) {
+                console.error('Error during token validation:', error);
+                if (isMounted) navigateTo('/login');
+            } finally {
+                if (isMounted) {
+                    setIsValidating(false);
+                }
+            }
+        };
+
+        validateToken();
+        return () => {
+            isMounted = false;
+        };
+    }, [navigateTo, isAuthenticated]);
+
+    const login = async (email: string, password: string) => {
         try {
-          // @ts-ignore
-          await window.api.callBackend('auth/validate', 'GET', null, savedToken);
-          if (isMounted) {
-            setToken(savedToken);
-            setRefreshToken(savedRefreshToken);
+            // @ts-ignore
+            const response = await window.api.callBackend<{ token: string; refreshToken: string }>(
+                'auth/login',
+                'POST',
+                { email, password }
+            );
+
+            window.electronStore.set('token', response.token);
+            window.electronStore.set('refreshToken', response.refreshToken);
+            setToken(response.token);
+            setRefreshToken(response.refreshToken);
             setIsAuthenticated(true);
-          }
+            navigateTo('/dashboard');
         } catch (error) {
-          console.error('Token validation failed:', error);
-          if (isMounted) {
-            window.electronStore.delete('token');
-            window.electronStore.delete('refreshToken');
-            navigateTo('/login');
-          }
+            console.error('Login failed:', error);
+            throw new Error('Invalid credentials');
         }
-      } catch (error) {
-        console.error('Error during token validation:', error);
-        if (isMounted) navigateTo('/login');
-      } finally {
-        if (isMounted) {
-          setIsValidating(false);
-        }
-      }
     };
 
-    validateToken();
-    return () => {
-      isMounted = false;
-    };
-  }, [navigateTo, isAuthenticated]);
-
-  const login = async (email: string, password: string) => {
-    try {
-      // @ts-ignore
-      const response = await window.api.callBackend<{ token: string; refreshToken: string }>(
-        'auth/login',
-        'POST',
-        { email, password }
-      );
-
-      window.electronStore.set('token', response.token);
-      window.electronStore.set('refreshToken', response.refreshToken);
-      setToken(response.token);
-      setRefreshToken(response.refreshToken);
-      setIsAuthenticated(true);
-      navigateTo('/dashboard');
-    } catch (error) {
-      console.error('Login failed:', error);
-      throw new Error('Invalid credentials');
-    }
-  };
-
-  const register = async (email: string, password: string, name: string) => {
-    try {
-      // @ts-ignore
-      const response = await window.api.callBackend<{ token: string; refreshToken: string }>(
-        'auth/register',
-        'POST',
-        { email, password, name }
-      );
-
-      window.electronStore.set('token', response.token);
-      window.electronStore.set('refreshToken', response.refreshToken);
-      setToken(response.token);
-      setRefreshToken(response.refreshToken);
-      setIsAuthenticated(true);
-      navigateTo('/dashboard');
-    } catch (error) {
-      console.error('Registration failed:', error);
-      throw new Error('Registration failed');
-    }
-  };
-
-  const callBackend = async <T,>(endpoint: string, method: string = 'GET', data?: any): Promise<T> => {
-    try {
-      // @ts-ignore
-      return await window.api.callBackend<T>(endpoint, method, data, token);
-    } catch (error: any) {
-      if (error?.status === 401 && refreshToken) {
+    const register = async (email: string, password: string, name: string) => {
         try {
-          // @ts-ignore
-          const refreshResponse = await window.api.callBackend<{ token: string; refreshToken: string }>(
-            'auth/refresh',
-            'POST',
-            { refreshToken }
-          );
+            // @ts-ignore
+            const response = await window.api.callBackend<{ token: string; refreshToken: string }>(
+                'auth/register',
+                'POST',
+                { email, password, name }
+            );
 
-          window.electronStore.set('token', refreshResponse.token);
-          window.electronStore.set('refreshToken', refreshResponse.refreshToken);
-          setToken(refreshResponse.token);
-          setRefreshToken(refreshResponse.refreshToken);
-
-          // @ts-ignore
-          return await window.api.callBackend<T>(endpoint, method, data, refreshResponse.token);
-        } catch (refreshError) {
-          console.error('Token refresh failed:', refreshError);
-          logout();
-          throw new Error('Session expired. Please log in again.');
+            window.electronStore.set('token', response.token);
+            window.electronStore.set('refreshToken', response.refreshToken);
+            setToken(response.token);
+            setRefreshToken(response.refreshToken);
+            setIsAuthenticated(true);
+            navigateTo('/dashboard');
+        } catch (error) {
+            console.error('Registration failed:', error);
+            throw new Error('Registration failed');
         }
-      }
-      throw error;
-    }
-  };
+    };
+
+    const callBackend = async <T,>(endpoint: string, method: string = 'GET', data?: any, isMultipart: boolean = false): Promise<T> => {
+        try {
+            const payload = isMultipart ? data : data ? JSON.stringify(data) : undefined;
+            // @ts-ignore
+            return await window.api.callBackend<T>(endpoint, method, payload, token, isMultipart);
+        } catch (error: any) {
+            if (error?.status === 401 && refreshToken) {
+                try {
+                    // @ts-ignore
+                    const refreshResponse = await window.api.callBackend<{ token: string; refreshToken: string }>(
+                        'auth/refresh',
+                        'POST',
+                        { refreshToken }
+                    );
+
+                    window.electronStore.set('token', refreshResponse.token);
+                    window.electronStore.set('refreshToken', refreshResponse.refreshToken);
+                    setToken(refreshResponse.token);
+                    setRefreshToken(refreshResponse.refreshToken);
+
+                    const retryPayload = isMultipart ? data : data ? JSON.stringify(data) : undefined;
+                    // @ts-ignore
+                    return await window.api.callBackend<T>(endpoint, method, retryPayload, refreshResponse.token, isMultipart);
+                } catch (refreshError) {
+                    console.error('Token refresh failed:', refreshError);
+                    logout();
+                    throw new Error('Session expired. Please log in again.');
+                }
+            }
+            throw error;
+        }
+    };
 
     const contextValue: AuthContextType = {
         token,

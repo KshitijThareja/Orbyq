@@ -10,8 +10,8 @@ const api = {
   saveFile: (path: string, content: string) => ipcRenderer.invoke("save-file", path, content),
   readFile: (path: string) => ipcRenderer.invoke("read-file", path),
   openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
-  callBackend: (endpoint: string, method: string = 'GET', data?: any, token?: string) =>
-    ipcRenderer.invoke("call-backend", { endpoint, method, data, token }),
+  callBackend: (endpoint: string, method: string = 'GET', data?: any, token?: string, isMultipart: boolean = false) =>
+    ipcRenderer.invoke("call-backend", { endpoint, method, data, token, isMultipart }),
   getBackendStatus: () => ipcRenderer.invoke("get-backend-status")
 };
 
