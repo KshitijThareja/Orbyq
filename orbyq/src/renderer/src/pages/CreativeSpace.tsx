@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useRef, useEffect, MouseEvent as ReactMouseEvent, ChangeEvent, useCallback } from "react"
@@ -46,6 +47,7 @@ const CreativeSpace = () => {
   const [activeTab, setActiveTab] = useState("canvas");
   const [canvasInfo, setCanvasInfo] = useState<CanvasInfo | null>(null);
   const [canvasItems, setCanvasItems] = useState<CanvasItem[]>([]);
+  const [allCanvases, setAllCanvases] = useState<CanvasInfo[]>([]);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [editContent, setEditContent] = useState<string>("");
@@ -78,7 +80,6 @@ const CreativeSpace = () => {
         setHistory([data.items]);
         setHistoryIndex(0);
       } else {
-        // Update the current history entry to reflect the backend state
         const newHistory = [...history];
         newHistory[historyIndex] = data.items;
         setHistory(newHistory);
@@ -93,6 +94,20 @@ const CreativeSpace = () => {
     }
   };
 
+  const fetchAllCanvases = async () => {
+    try {
+      console.log("Fetching all canvases...");
+      const canvases = await callBackend<CanvasInfo[]>("canvases", "GET");
+      console.log("Fetched canvases:", canvases);
+      setAllCanvases(canvases);
+      return canvases;
+    } catch (err: any) {
+      console.error("Error fetching canvases:", err);
+      setErrorMessage("Failed to load canvases: " + (err.message || "Unknown error"));
+      return [];
+    }
+  };
+
   const createNewCanvas = async () => {
     try {
       console.log("Creating new canvas...");
@@ -102,7 +117,10 @@ const CreativeSpace = () => {
       setCanvasItems([]);
       setHistory([[]]);
       setHistoryIndex(0);
-      await fetchCanvasItems(newCanvas.id);
+      const updatedCanvases = await fetchAllCanvases();
+      if (updatedCanvases.length > 0) {
+        await fetchCanvasItems(newCanvas.id);
+      }
       setErrorMessage(null);
     } catch (err: any) {
       console.error("Error creating new canvas:", err);
@@ -111,13 +129,30 @@ const CreativeSpace = () => {
     }
   };
 
+  const deleteCanvas = async (canvasId: string) => {
+    try {
+      console.log(`Deleting canvas ${canvasId}`);
+      await callBackend<void>(`canvas/${canvasId}`, "DELETE");
+      const updatedCanvases = await fetchAllCanvases();
+      if (canvasId === canvasInfo?.id) {
+        if (updatedCanvases.length > 0) {
+          await fetchCanvasItems(updatedCanvases[0].id);
+        } else {
+          await createNewCanvas();
+        }
+      }
+      setErrorMessage(null);
+    } catch (err: any) {
+      console.error("Error deleting canvas:", err);
+      setErrorMessage("Failed to delete canvas: " + (err.message || "Unknown error"));
+    }
+  };
+
   const loadExistingCanvas = async () => {
     try {
-      console.log("Checking for existing canvases...");
-      const canvases = await callBackend<{ id: string; title: string }[]>("canvases", "GET");
-      console.log("Existing canvases:", canvases);
-      if (canvases && canvases.length > 0) {
-        const latestCanvas = canvases[0]; // Load the first canvas (you can modify this logic to select a specific canvas)
+      const canvases = await fetchAllCanvases();
+      if (canvases.length > 0) {
+        const latestCanvas = canvases[0];
         await fetchCanvasItems(latestCanvas.id);
       } else {
         await createNewCanvas();
@@ -140,6 +175,7 @@ const CreativeSpace = () => {
       const endpointWithQuery = `canvas/${canvasInfo.id}/title?title=${encodeURIComponent(tempTitle)}`;
       await callBackend<void>(endpointWithQuery, "PUT", null);
       setCanvasInfo({ ...canvasInfo, title: tempTitle });
+      setAllCanvases(allCanvases.map(c => c.id === canvasInfo.id ? { ...c, title: tempTitle } : c));
       setIsEditingTitle(false);
       setErrorMessage(null);
     } catch (err: any) {
@@ -178,7 +214,7 @@ const CreativeSpace = () => {
       } catch (err: any) {
         console.error("Error saving content:", err);
         setErrorMessage("Failed to update item content.");
-        fetchCanvasItems(canvasInfo!.id, true); // Preserve history on error
+        fetchCanvasItems(canvasInfo!.id, true);
       }
     }
   };
@@ -228,7 +264,7 @@ const CreativeSpace = () => {
         } catch (err: any) {
           console.error("Error updating item position:", err);
           setErrorMessage("Failed to update item position.");
-          fetchCanvasItems(canvasInfo.id, true); // Preserve history on error
+          fetchCanvasItems(canvasInfo.id, true);
         }
       }
     }
@@ -248,60 +284,88 @@ const CreativeSpace = () => {
   }, [isDragging, selectedItem, canvasItems, canvasInfo]);
 
   const addItem = async (type: string, file?: File) => {
-    if (!canvasInfo) return;
+  if (!canvasInfo) return;
 
-    const newItem = {
-      canvasId: canvasInfo.id,
-      type,
-      content: type === "text" ? "New text" : type === "image" ? "/placeholder.svg" : "New note",
-      x: 200,
-      y: 200,
-      width: type === "text" ? 200 : 200,
-      height: type === "text" ? 50 : type === "image" ? 150 : 100,
-      style:
-        type === "text"
-          ? { fontSize: "14px", fontWeight: "normal", colorClass: "text-foreground" }
-          : type === "note"
-            ? { backgroundClass: "bg-note", padding: "10px", borderRadius: "4px" }
-            : {},
-    };
-
-    try {
-      let createdItem: CanvasItem;
-      if (file) {
-        console.log(`Adding image item with file: ${file.name}`);
-        const formData = new FormData();
-        const canvasItemBlob = new Blob([JSON.stringify(newItem)], { type: "application/json" });
-        formData.append("canvasItem", canvasItemBlob);
-        formData.append("file", file);
-
-        const response = await fetch(`http://localhost:8080/api/canvas/${canvasInfo.id}`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: formData,
-        });
-
-        if (!response.ok) {
-          throw new Error(`Request failed with status ${response.status}: ${await response.text()}`);
-        }
-
-        createdItem = await response.json();
-      } else {
-        console.log(`Adding ${type} item`);
-        createdItem = await callBackend<CanvasItem>(`canvas/${canvasInfo.id}`, "POST", newItem);
-      }
-      const newItems = [...canvasItems, createdItem];
-      setCanvasItems(newItems);
-      saveToHistory(newItems);
-      setSelectedItem(createdItem.id);
-      setErrorMessage(null);
-    } catch (err: any) {
-      console.error("Error adding item:", err);
-      setErrorMessage("Failed to add new item: " + (err.message || "Unknown error"));
-    }
+  const newItem = {
+    canvasId: canvasInfo.id,
+    type,
+    content: type === "text" ? "New text" : type === "image" ? "" : "New note",
+    x: 200,
+    y: 200,
+    width: type === "text" ? 200 : 200,
+    height: type === "text" ? 50 : type === "image" ? 150 : 100,
+    style:
+      type === "text"
+        ? { fontSize: "14px", fontWeight: "normal", colorClass: "text-foreground" }
+        : type === "note"
+          ? { backgroundClass: "bg-note", padding: "10px", borderRadius: "4px" }
+          : {},
   };
+
+  try {
+    let createdItem: CanvasItem;
+    if (file) {
+      console.log(`Adding image item with file: ${file.name}`);
+      console.log("Authorization token:", token);
+      const formData = new FormData();
+      const canvasItemBlob = new Blob([JSON.stringify(newItem)], { type: "application/json" });
+      formData.append("canvasItem", canvasItemBlob);
+      formData.append("file", file);
+
+      const response = await fetch(`http://localhost:8080/api/canvas/${canvasInfo.id}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        if (response.status === 403) {
+          throw new Error("Permission denied: You are not authorized to add items to this canvas.");
+        }
+        throw new Error(`Request failed with status ${response.status}: ${errorText}`);
+      }
+
+      const responseText = await response.text();
+      console.log("Raw response from image upload:", responseText);
+      try {
+        createdItem = JSON.parse(responseText);
+      } catch (jsonError) {
+        console.error("Failed to parse response as JSON:", jsonError);
+        await fetchCanvasItems(canvasInfo.id);
+        setErrorMessage(null);
+        return;
+      }
+    } else {
+      console.log(`Adding ${type} item`);
+      const rawResponse = await callBackend(`canvas/${canvasInfo.id}`, "POST", newItem);
+      console.log("Raw response from callBackend:", rawResponse);
+      try {
+        createdItem = typeof rawResponse === "string" ? JSON.parse(rawResponse) : rawResponse;
+      } catch (jsonError) {
+        console.error("Failed to parse callBackend response as JSON:", jsonError);
+        await fetchCanvasItems(canvasInfo.id);
+        setErrorMessage(null);
+        return;
+      }
+    }
+    console.log("Created item:", createdItem);
+    
+    setCanvasItems(prevItems => {
+      const newItems = [...prevItems, createdItem];
+      setTimeout(() => saveToHistory(newItems), 0);
+      return newItems;
+    });
+    
+    setSelectedItem(createdItem.id);
+    setErrorMessage(null);
+  } catch (err: any) {
+    console.error("Error adding item:", err);
+    setErrorMessage(`Failed to add new item: ${err.message || "Unknown error"}`);
+  }
+};
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -340,7 +404,7 @@ const CreativeSpace = () => {
     } catch (err: any) {
       console.error("Error updating item image:", err);
       setErrorMessage("Failed to update item image: " + (err.message || "Unknown error"));
-      fetchCanvasItems(canvasInfo.id, true); // Preserve history on error
+      fetchCanvasItems(canvasInfo.id, true);
     }
   };
 
@@ -358,7 +422,7 @@ const CreativeSpace = () => {
     } catch (err: any) {
       console.error("Error updating item size:", err);
       setErrorMessage("Failed to update item size.");
-      fetchCanvasItems(canvasInfo.id, true); // Preserve history on error
+      fetchCanvasItems(canvasInfo.id, true);
     }
   };
 
@@ -376,7 +440,7 @@ const CreativeSpace = () => {
     } catch (err: any) {
       console.error("Error updating item style:", err);
       setErrorMessage("Failed to update item style.");
-      fetchCanvasItems(canvasInfo.id, true); // Preserve history on error
+      fetchCanvasItems(canvasInfo.id, true);
     }
   };
 
@@ -394,7 +458,7 @@ const CreativeSpace = () => {
       } catch (err: any) {
         console.error("Error deleting item:", err);
         setErrorMessage("Failed to delete item.");
-        fetchCanvasItems(canvasInfo.id, true); // Preserve history on error
+        fetchCanvasItems(canvasInfo.id, true);
       }
     }
   };
@@ -493,6 +557,41 @@ const CreativeSpace = () => {
           >
             <Plus size={14} className="mr-1" /> New Canvas
           </Button>
+        </div>
+      </div>
+
+      {/* Canvas Selection Dropdown */}
+      <div className="mb-4">
+        <Label className="text-foreground">Select Canvas</Label>
+        <div className="flex items-center gap-2 mt-2">
+          <Select
+            value={canvasInfo.id}
+            onValueChange={(value) => fetchCanvasItems(value)}
+          >
+            <SelectTrigger className="w-[300px] border-border bg-background text-foreground">
+              <SelectValue placeholder="Select a canvas" />
+            </SelectTrigger>
+            <SelectContent className="bg-background border-border">
+              {allCanvases.map((canvas) => (
+                <div key={canvas.id} className="flex items-center justify-between px-2 py-1">
+                  <SelectItem value={canvas.id} className="flex-1 text-foreground">
+                    {canvas.title}
+                  </SelectItem>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:bg-muted"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteCanvas(canvas.id);
+                    }}
+                  >
+                    <Trash2 size={14} />
+                  </Button>
+                </div>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -672,7 +771,7 @@ const CreativeSpace = () => {
                                   <Paintbrush size={14} />
                                 </Button>
                               </PopoverTrigger>
-                              <PopoverContent className="w-80">
+                              <PopoverContent className="w-80 bg-background border-border">
                                 <div className="grid gap-4">
                                   <div className="space-y-2">
                                     <h4 className="font-medium leading-none text-foreground">Style</h4>
@@ -680,7 +779,7 @@ const CreativeSpace = () => {
                                   </div>
                                   <div className="grid gap-2">
                                     <div className="grid grid-cols-3 items-center gap-4">
-                                      <Label htmlFor="fontSize">Font Size</Label>
+                                      <Label className="text-foreground" htmlFor="fontSize">Font Size</Label>
                                       <Select
                                         value={item.style?.fontSize ?? "14px"}
                                         onValueChange={(value) =>
@@ -690,20 +789,20 @@ const CreativeSpace = () => {
                                           })
                                         }
                                       >
-                                        <SelectTrigger id="fontSize" className="col-span-2">
+                                        <SelectTrigger id="fontSize" className="col-span-2 border-border text-foreground">
                                           <SelectValue placeholder="Select font size" />
                                         </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="12px">12px</SelectItem>
-                                          <SelectItem value="14px">14px</SelectItem>
-                                          <SelectItem value="16px">16px</SelectItem>
-                                          <SelectItem value="18px">18px</SelectItem>
-                                          <SelectItem value="20px">20px</SelectItem>
+                                        <SelectContent className="bg-background border-border">
+                                          <SelectItem className="text-foreground" value="12px">12px</SelectItem>
+                                          <SelectItem className="text-foreground" value="14px">14px</SelectItem>
+                                          <SelectItem className="text-foreground" value="16px">16px</SelectItem>
+                                          <SelectItem className="text-foreground" value="18px">18px</SelectItem>
+                                          <SelectItem className="text-foreground" value="20px">20px</SelectItem>
                                         </SelectContent>
                                       </Select>
                                     </div>
                                     <div className="grid grid-cols-3 items-center gap-4">
-                                      <Label htmlFor="color">Color</Label>
+                                      <Label className="text-foreground" htmlFor="color">Color</Label>
                                       <Select
                                         value={item.style?.colorClass ?? "text-foreground"}
                                         onValueChange={(value) =>
@@ -713,15 +812,15 @@ const CreativeSpace = () => {
                                           })
                                         }
                                       >
-                                        <SelectTrigger id="color" className="col-span-2">
+                                        <SelectTrigger id="color" className="col-span-2 border-border text-foreground">
                                           <SelectValue placeholder="Select color" />
                                         </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="text-foreground">Default</SelectItem>
-                                          <SelectItem value="text-red-500">Red</SelectItem>
-                                          <SelectItem value="text-blue-500">Blue</SelectItem>
-                                          <SelectItem value="text-green-500">Green</SelectItem>
-                                          <SelectItem value="text-purple-500">Purple</SelectItem>
+                                        <SelectContent className="bg-background border-border">
+                                          <SelectItem className="text-foreground" value="text-foreground">Default</SelectItem>
+                                          <SelectItem className="text-foreground" value="text-red-500">Red</SelectItem>
+                                          <SelectItem className="text-foreground" value="text-blue-500">Blue</SelectItem>
+                                          <SelectItem className="text-foreground" value="text-green-500">Green</SelectItem>
+                                          <SelectItem className="text-foreground" value="text-purple-500">Purple</SelectItem>
                                         </SelectContent>
                                       </Select>
                                     </div>
@@ -797,7 +896,8 @@ const CreativeSpace = () => {
                               {item.content}
                             </div>
                           )}
-                          {(//@ts-ignore
+                          {(
+                            //@ts-ignore
                             item.type === "text" || item.type === "note") && selectedItem === item.id && (
                               <Popover>
                                 <PopoverTrigger asChild>
@@ -809,7 +909,7 @@ const CreativeSpace = () => {
                                     <Paintbrush size={14} />
                                   </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-80">
+                                <PopoverContent className="w-80 bg-background border-border">
                                   <div className="grid gap-4">
                                     <div className="space-y-2">
                                       <h4 className="font-medium leading-none text-foreground">Style</h4>
@@ -817,7 +917,7 @@ const CreativeSpace = () => {
                                     </div>
                                     <div className="grid gap-2">
                                       <div className="grid grid-cols-3 items-center gap-4">
-                                        <Label htmlFor="background">Background</Label>
+                                        <Label className="text-foreground" htmlFor="background">Background</Label>
                                         <Select
                                           value={item.style?.backgroundClass ?? "bg-note"}
                                           onValueChange={(value) =>
@@ -827,15 +927,15 @@ const CreativeSpace = () => {
                                             })
                                           }
                                         >
-                                          <SelectTrigger id="background" className="col-span-2">
+                                          <SelectTrigger id="background" className="col-span-2 border-border text-foreground">
                                             <SelectValue placeholder="Select background" />
                                           </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="bg-note">Default</SelectItem>
-                                            <SelectItem value="bg-yellow-100">Yellow</SelectItem>
-                                            <SelectItem value="bg-blue-100">Blue</SelectItem>
-                                            <SelectItem value="bg-green-100">Green</SelectItem>
-                                            <SelectItem value="bg-pink-100">Pink</SelectItem>
+                                          <SelectContent className="bg-background border-border">
+                                            <SelectItem className="text-foreground" value="bg-note">Default</SelectItem>
+                                            <SelectItem className="text-foreground" value="bg-yellow-100">Yellow</SelectItem>
+                                            <SelectItem className="text-foreground" value="bg-blue-100">Blue</SelectItem>
+                                            <SelectItem className="text-foreground" value="bg-green-100">Green</SelectItem>
+                                            <SelectItem className="text-foreground" value="bg-pink-100">Pink</SelectItem>
                                           </SelectContent>
                                         </Select>
                                       </div>

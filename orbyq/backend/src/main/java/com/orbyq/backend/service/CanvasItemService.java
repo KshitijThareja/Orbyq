@@ -13,6 +13,7 @@ import com.orbyq.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -71,8 +72,8 @@ public class CanvasItemService {
             dto.setHeight(item.getHeight());
             try {
                 CanvasItemDTO.StyleDTO style = item.getStyleJson() != null
-                    ? objectMapper.readValue(item.getStyleJson(), CanvasItemDTO.StyleDTO.class)
-                    : new CanvasItemDTO.StyleDTO();
+                        ? objectMapper.readValue(item.getStyleJson(), CanvasItemDTO.StyleDTO.class)
+                        : new CanvasItemDTO.StyleDTO();
                 dto.setStyle(style != null ? style : new CanvasItemDTO.StyleDTO());
             } catch (JsonProcessingException e) {
                 throw new RuntimeException("Failed to deserialize style JSON", e);
@@ -139,8 +140,8 @@ public class CanvasItemService {
         item.setHeight(canvasItemDTO.getHeight());
         try {
             CanvasItemDTO.StyleDTO style = canvasItemDTO.getStyle() != null
-                ? canvasItemDTO.getStyle()
-                : new CanvasItemDTO.StyleDTO();
+                    ? canvasItemDTO.getStyle()
+                    : new CanvasItemDTO.StyleDTO();
             String styleJson = objectMapper.writeValueAsString(style);
             item.setStyleJson(styleJson);
         } catch (JsonProcessingException e) {
@@ -178,8 +179,8 @@ public class CanvasItemService {
         item.setHeight(canvasItemDTO.getHeight());
         try {
             CanvasItemDTO.StyleDTO style = canvasItemDTO.getStyle() != null
-                ? canvasItemDTO.getStyle()
-                : new CanvasItemDTO.StyleDTO();
+                    ? canvasItemDTO.getStyle()
+                    : new CanvasItemDTO.StyleDTO();
             String styleJson = objectMapper.writeValueAsString(style);
             item.setStyleJson(styleJson);
         } catch (JsonProcessingException e) {
@@ -208,5 +209,21 @@ public class CanvasItemService {
         }
 
         canvasItemRepository.delete(item);
+    }
+
+    @Transactional
+    public void deleteCanvas(String username, String canvasId) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        Canvas canvas = canvasRepository.findById(UUID.fromString(canvasId))
+                .orElseThrow(() -> new IllegalArgumentException("Canvas not found"));
+
+        if (!canvas.getUser().getId().equals(user.getId())) {
+            throw new SecurityException("Unauthorized to delete this canvas");
+        }
+
+        // Delete the canvas (associated items will be deleted via cascade)
+        canvasRepository.delete(canvas);
     }
 }

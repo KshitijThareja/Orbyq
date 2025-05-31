@@ -148,4 +148,14 @@ public class CanvasItemController {
         canvasItemService.deleteCanvasItem(userDetails.getUsername(), canvasId, itemId);
         return ResponseEntity.ok().build();
     }
+
+    @DeleteMapping("/canvas/{canvasId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> deleteCanvas(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable String canvasId
+    ) {
+        canvasItemService.deleteCanvas(userDetails.getUsername(), canvasId);
+        return ResponseEntity.ok().build();
+    }
 }
