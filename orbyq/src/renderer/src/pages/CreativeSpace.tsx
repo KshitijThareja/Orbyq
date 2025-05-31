@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useRef, useEffect, MouseEvent as ReactMouseEvent, ChangeEvent, useCallback } from "react"
@@ -6,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Plus, FileText, Pencil, Trash2, Save, Undo, Redo, Type, Palette, Grid3X3, ImageIcon, Paintbrush } from "lucide-react"
+import { Plus, FileText, Pencil, Trash2, Undo, Redo, Type, Palette, Grid3X3, ImageIcon, Paintbrush } from "lucide-react"
 import { motion } from "framer-motion"
 import { useAuth } from "@/context/AuthContext"
 import Loader from "@/components/Loader"
@@ -15,6 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ResizableBox } from "react-resizable"
 import "react-resizable/css/styles.css"
+import { Textarea } from "@/components/ui/textarea"
 
 type CanvasItemStyle = {
   fontSize?: string;
@@ -42,6 +42,20 @@ type CanvasInfo = {
   title: string;
 };
 
+type Document = {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type MoodBoardItem = {
+  id: string;
+  imageUrl: string;
+  createdAt: string;
+};
+
 const CreativeSpace = () => {
   const { callBackend, token } = useAuth();
   const [activeTab, setActiveTab] = useState("canvas");
@@ -60,6 +74,17 @@ const CreativeSpace = () => {
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState("");
+
+  // Documents state
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [editingDocument, setEditingDocument] = useState<string | null>(null);
+  const [viewingDocument, setViewingDocument] = useState<string | null>(null);
+  const [editDocumentTitle, setEditDocumentTitle] = useState<string>("");
+  const [editDocumentContent, setEditDocumentContent] = useState<string>("");
+
+  // Mood Board state
+  const [moodBoardItems, setMoodBoardItems] = useState<MoodBoardItem[]>([]);
+  const [isAddingMoodBoardItem, setIsAddingMoodBoardItem] = useState(false);
 
   const saveToHistory = useCallback((items: CanvasItem[]) => {
     const newHistory = history.slice(0, historyIndex + 1);
@@ -108,6 +133,32 @@ const CreativeSpace = () => {
     }
   };
 
+  const fetchDocuments = async () => {
+    try {
+      console.log("Fetching all documents...");
+      const documents = await callBackend<Document[]>("documents", "GET");
+      console.log("Fetched documents:", documents);
+      setDocuments(documents);
+      setErrorMessage(null);
+    } catch (err: any) {
+      console.error("Error fetching documents:", err);
+      setErrorMessage("Failed to load documents: " + (err.message || "Unknown error"));
+    }
+  };
+
+  const fetchMoodBoardItems = async () => {
+    try {
+      console.log("Fetching all mood board items...");
+      const items = await callBackend<MoodBoardItem[]>("moodboard", "GET");
+      console.log("Fetched mood board items:", items);
+      setMoodBoardItems(items);
+      setErrorMessage(null);
+    } catch (err: any) {
+      console.error("Error fetching mood board items:", err);
+      setErrorMessage("Failed to load mood board items: " + (err.message || "Unknown error"));
+    }
+  };
+
   const createNewCanvas = async () => {
     try {
       console.log("Creating new canvas...");
@@ -126,6 +177,25 @@ const CreativeSpace = () => {
       console.error("Error creating new canvas:", err);
       setErrorMessage("Failed to create new canvas: " + (err.message || "Unknown error"));
       setIsLoading(false);
+    }
+  };
+
+  const createNewDocument = async () => {
+    try {
+      console.log("Creating new document...");
+      const newDocument = await callBackend<Document>("document/new", "POST", {
+        title: "Untitled Document",
+        content: ""
+      });
+      console.log("Created new document:", newDocument);
+      setDocuments([...documents, newDocument]);
+      setEditingDocument(newDocument.id);
+      setEditDocumentTitle(newDocument.title);
+      setEditDocumentContent(newDocument.content);
+      setErrorMessage(null);
+    } catch (err: any) {
+      console.error("Error creating new document:", err);
+      setErrorMessage("Failed to create new document: " + (err.message || "Unknown error"));
     }
   };
 
@@ -148,6 +218,36 @@ const CreativeSpace = () => {
     }
   };
 
+  const deleteDocument = async (documentId: string) => {
+    try {
+      console.log(`Deleting document ${documentId}`);
+      await callBackend<void>(`document/${documentId}`, "DELETE");
+      setDocuments(documents.filter(doc => doc.id !== documentId));
+      if (editingDocument === documentId) {
+        setEditingDocument(null);
+      }
+      if (viewingDocument === documentId) {
+        setViewingDocument(null);
+      }
+      setErrorMessage(null);
+    } catch (err: any) {
+      console.error("Error deleting document:", err);
+      setErrorMessage("Failed to delete document: " + (err.message || "Unknown error"));
+    }
+  };
+
+  const deleteMoodBoardItem = async (itemId: string) => {
+    try {
+      console.log(`Deleting mood board item ${itemId}`);
+      await callBackend<void>(`moodboard/${itemId}`, "DELETE");
+      setMoodBoardItems(moodBoardItems.filter(item => item.id !== itemId));
+      setErrorMessage(null);
+    } catch (err: any) {
+      console.error("Error deleting mood board item:", err);
+      setErrorMessage("Failed to load mood board items: " + (err.message || "Unknown error"));
+    }
+  };
+
   const loadExistingCanvas = async () => {
     try {
       const canvases = await fetchAllCanvases();
@@ -157,6 +257,8 @@ const CreativeSpace = () => {
       } else {
         await createNewCanvas();
       }
+      await fetchDocuments();
+      await fetchMoodBoardItems();
     } catch (err: any) {
       console.error("Error loading existing canvases:", err);
       setErrorMessage("Failed to load canvases: " + (err.message || "Unknown error"));
@@ -181,6 +283,29 @@ const CreativeSpace = () => {
     } catch (err: any) {
       console.error("Error updating canvas title:", err);
       setErrorMessage("Failed to update canvas title: " + (err.message || "Unknown error"));
+    }
+  };
+
+  const updateDocument = async (documentId: string) => {
+    try {
+      console.log(`Updating document ${documentId}`);
+      //@ts-ignore
+      const updatedDocument = await callBackend<void>(`document/${documentId}`, "PUT", {
+        title: editDocumentTitle,
+        content: editDocumentContent
+      });
+      setDocuments(documents.map(doc => doc.id === documentId ? {
+        ...doc,
+        title: editDocumentTitle,
+        content: editDocumentContent,
+        updatedAt: new Date().toISOString()
+      } : doc));
+      setEditingDocument(null);
+      setViewingDocument(null);
+      setErrorMessage(null);
+    } catch (err: any) {
+      console.error("Error updating document:", err);
+      setErrorMessage("Failed to update document: " + (err.message || "Unknown error"));
     }
   };
 
@@ -367,10 +492,46 @@ const CreativeSpace = () => {
     }
   };
 
+  const addMoodBoardItem = async (file: File) => {
+    try {
+      console.log(`Adding mood board item with file: ${file.name}`);
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(`http://localhost:8080/api/moodboard/new`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Request failed with status ${response.status}: ${errorText}`);
+      }
+
+      const newItem = await response.json();
+      setMoodBoardItems([...moodBoardItems, newItem]);
+      setErrorMessage(null);
+    } catch (err: any) {
+      console.error("Error adding mood board item:", err);
+      setErrorMessage(`Failed to add mood board item: ${err.message || "Unknown error"}`);
+    }
+  };
+
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       addItem("image", file);
+    }
+  };
+
+  const handleMoodBoardFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      addMoodBoardItem(file);
+      setIsAddingMoodBoardItem(false);
     }
   };
 
@@ -506,6 +667,18 @@ const CreativeSpace = () => {
     return height;
   };
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) return "Updated yesterday";
+    if (diffDays < 7) return `Updated ${diffDays} days ago`;
+    if (diffDays < 14) return "Updated 1 week ago";
+    return `Updated on ${date.toLocaleDateString()}`;
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
@@ -533,6 +706,8 @@ const CreativeSpace = () => {
             onClick={() => {
               setErrorMessage(null);
               fetchCanvasItems(canvasInfo.id);
+              fetchDocuments();
+              fetchMoodBoardItems();
             }}
             className="ml-2"
           >
@@ -546,53 +721,6 @@ const CreativeSpace = () => {
           <h1 className="text-2xl font-bold text-foreground">Creative Space</h1>
           <p className="text-muted-foreground">Organize your ideas and inspirations</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="border-border text-foreground hover:bg-muted">
-            <Save size={14} className="mr-1" /> Save
-          </Button>
-          <Button
-            size="sm"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground"
-            onClick={createNewCanvas}
-          >
-            <Plus size={14} className="mr-1" /> New Canvas
-          </Button>
-        </div>
-      </div>
-
-      {/* Canvas Selection Dropdown */}
-      <div className="mb-4">
-        <Label className="text-foreground">Select Canvas</Label>
-        <div className="flex items-center gap-2 mt-2">
-          <Select
-            value={canvasInfo.id}
-            onValueChange={(value) => fetchCanvasItems(value)}
-          >
-            <SelectTrigger className="w-[300px] border-border bg-background text-foreground">
-              <SelectValue placeholder="Select a canvas" />
-            </SelectTrigger>
-            <SelectContent className="bg-background border-border">
-              {allCanvases.map((canvas) => (
-                <div key={canvas.id} className="flex items-center justify-between px-2 py-1">
-                  <SelectItem value={canvas.id} className="flex-1 text-foreground">
-                    {canvas.title}
-                  </SelectItem>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:bg-muted"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteCanvas(canvas.id);
-                    }}
-                  >
-                    <Trash2 size={14} />
-                  </Button>
-                </div>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="h-[calc(100%-80px)]">
@@ -604,39 +732,85 @@ const CreativeSpace = () => {
           </TabsList>
 
           <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-foreground hover:bg-muted"
-              onClick={undo}
-              disabled={historyIndex <= 0}
-            >
-              <Undo size={16} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-foreground hover:bg-muted"
-              onClick={redo}
-              disabled={historyIndex >= history.length - 1}
-            >
-              <Redo size={16} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-foreground hover:bg-muted"
-              onClick={deleteItem}
-              disabled={!selectedItem}
-            >
-              <Trash2 size={16} />
-            </Button>
+            {activeTab === "canvas" && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-foreground hover:bg-muted"
+                  onClick={undo}
+                  disabled={historyIndex <= 0}
+                >
+                  <Undo size={16} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-foreground hover:bg-muted"
+                  onClick={redo}
+                  disabled={historyIndex >= history.length - 1}
+                >
+                  <Redo size={16} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-foreground hover:bg-muted"
+                  onClick={deleteItem}
+                  disabled={!selectedItem}
+                >
+                  <Trash2 size={16} />
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
         <TabsContent value="canvas" className="h-full mt-0">
           <Card className="h-full bg-background border-border">
             <CardHeader className="p-4 pb-4">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <Label className="text-foreground">Select Canvas</Label>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Select
+                      value={canvasInfo.id}
+                      onValueChange={(value) => fetchCanvasItems(value)}
+                    >
+                      <SelectTrigger className="w-[300px] border-border bg-background text-foreground">
+                        <SelectValue placeholder="Select a canvas" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border-border">
+                        {allCanvases.map((canvas) => (
+                          <div key={canvas.id} className="flex items-center justify-between px-2 py-1">
+                            <SelectItem value={canvas.id} className="flex-1 text-foreground">
+                              {canvas.title}
+                            </SelectItem>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:bg-muted"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteCanvas(canvas.id);
+                              }}
+                            >
+                              <Trash2 size={14} />
+                            </Button>
+                          </div>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      size="sm"
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                      onClick={createNewCanvas}
+                    >
+                      <Plus size={14} className="mr-1" /> New Canvas
+                    </Button>
+                  </div>
+                </div>
+              </div>
               <div className="flex justify-between items-center">
                 {isEditingTitle ? (
                   <Input
@@ -896,54 +1070,53 @@ const CreativeSpace = () => {
                               {item.content}
                             </div>
                           )}
-                          {(
-                            //@ts-ignore
+                          {(//@ts-ignore
                             item.type === "text" || item.type === "note") && selectedItem === item.id && (
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="absolute top-0 right-0 text-foreground hover:bg-muted"
-                                  >
-                                    <Paintbrush size={14} />
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-80 bg-background border-border">
-                                  <div className="grid gap-4">
-                                    <div className="space-y-2">
-                                      <h4 className="font-medium leading-none text-foreground">Style</h4>
-                                      <p className="text-sm text-muted-foreground">Adjust the item’s appearance</p>
-                                    </div>
-                                    <div className="grid gap-2">
-                                      <div className="grid grid-cols-3 items-center gap-4">
-                                        <Label className="text-foreground" htmlFor="background">Background</Label>
-                                        <Select
-                                          value={item.style?.backgroundClass ?? "bg-note"}
-                                          onValueChange={(value) =>
-                                            handleStyleChange(item, {
-                                              ...item.style,
-                                              backgroundClass: value,
-                                            })
-                                          }
-                                        >
-                                          <SelectTrigger id="background" className="col-span-2 border-border text-foreground">
-                                            <SelectValue placeholder="Select background" />
-                                          </SelectTrigger>
-                                          <SelectContent className="bg-background border-border">
-                                            <SelectItem className="text-foreground" value="bg-note">Default</SelectItem>
-                                            <SelectItem className="text-foreground" value="bg-yellow-100">Yellow</SelectItem>
-                                            <SelectItem className="text-foreground" value="bg-blue-100">Blue</SelectItem>
-                                            <SelectItem className="text-foreground" value="bg-green-100">Green</SelectItem>
-                                            <SelectItem className="text-foreground" value="bg-pink-100">Pink</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="absolute top-0 right-0 text-foreground hover:bg-muted"
+                                >
+                                  <Paintbrush size={14} />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-80 bg-background border-border">
+                                <div className="grid gap-4">
+                                  <div className="space-y-2">
+                                    <h4 className="font-medium leading-none text-foreground">Style</h4>
+                                    <p className="text-sm text-muted-foreground">Adjust the item’s appearance</p>
+                                  </div>
+                                  <div className="grid gap-2">
+                                    <div className="grid grid-cols-3 items-center gap-4">
+                                      <Label className="text-foreground" htmlFor="background">Background</Label>
+                                      <Select
+                                        value={item.style?.backgroundClass ?? "bg-note"}
+                                        onValueChange={(value) =>
+                                          handleStyleChange(item, {
+                                            ...item.style,
+                                            backgroundClass: value,
+                                          })
+                                        }
+                                      >
+                                        <SelectTrigger id="background" className="col-span-2 border-border text-foreground">
+                                          <SelectValue placeholder="Select background" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-background border-border">
+                                          <SelectItem className="text-foreground" value="bg-note">Default</SelectItem>
+                                          <SelectItem className="text-foreground" value="bg-yellow-100">Yellow</SelectItem>
+                                          <SelectItem className="text-foreground" value="bg-blue-100">Blue</SelectItem>
+                                          <SelectItem className="text-foreground" value="bg-green-100">Green</SelectItem>
+                                          <SelectItem className="text-foreground" value="bg-pink-100">Pink</SelectItem>
+                                        </SelectContent>
+                                      </Select>
                                     </div>
                                   </div>
-                                </PopoverContent>
-                              </Popover>
-                            )}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          )}
                         </>
                       )}
                     </motion.div>
@@ -961,41 +1134,126 @@ const CreativeSpace = () => {
               <CardDescription className="text-muted-foreground">Create and manage your documents</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[
-                  { title: "Project Proposal", date: "Updated 2 days ago" },
-                  { title: "Meeting Notes", date: "Updated 1 week ago" },
-                  { title: "Research Findings", date: "Updated 3 days ago" },
-                  { title: "Design Guidelines", date: "Updated yesterday" },
-                ].map((doc, i) => (
-                  <Card
-                    key={i}
-                    className="cursor-pointer hover:shadow-md transition-shadow bg-background border-border"
-                  >
-                    <CardHeader className="p-4">
-                      <div className="flex justify-between items-start">
-                        <FileText className="text-muted-foreground" />
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-foreground hover:bg-muted">
-                          <Pencil size={14} />
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-0">
-                      <h3 className="font-medium text-foreground">{doc.title}</h3>
-                      <p className="text-xs text-muted-foreground mt-1">{doc.date}</p>
-                    </CardContent>
-                  </Card>
-                ))}
-
-                <Card
-                  className="cursor-pointer hover:shadow-md transition-shadow border-dashed border-2 border-border bg-background flex items-center justify-center h-[140px]"
-                >
-                  <div className="text-center">
-                    <Plus size={24} className="mx-auto text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">Create New Document</p>
+              {editingDocument ? (
+                <div className="space-y-4">
+                  <Input
+                    value={editDocumentTitle}
+                    onChange={(e) => setEditDocumentTitle(e.target.value)}
+                    placeholder="Document Title"
+                    className="border-border bg-background text-foreground"
+                  />
+                  <Textarea
+                    value={editDocumentContent}
+                    onChange={(e) => setEditDocumentContent(e.target.value)}
+                    placeholder="Document Content"
+                    className="h-[400px] border-border bg-background text-foreground"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => updateDocument(editingDocument)}
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                    >
+                      Save
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setEditingDocument(null)}
+                      className="border-border text-foreground hover:bg-muted"
+                    >
+                      Cancel
+                    </Button>
                   </div>
-                </Card>
-              </div>
+                </div>
+              ) : viewingDocument ? (
+                <div className="space-y-4">
+                  <h2 className="text-xl font-semibold text-foreground">
+                    {documents.find(doc => doc.id === viewingDocument)?.title || "Document"}
+                  </h2>
+                  <div className="p-4 bg-muted rounded-md text-foreground whitespace-pre-wrap">
+                    {documents.find(doc => doc.id === viewingDocument)?.content || "No content"}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const doc = documents.find(doc => doc.id === viewingDocument);
+                        if (doc) {
+                          setEditingDocument(doc.id);
+                          setEditDocumentTitle(doc.title);
+                          setEditDocumentContent(doc.content);
+                          setViewingDocument(null);
+                        }
+                      }}
+                      className="border-border text-foreground hover:bg-muted"
+                    >
+                      <Pencil size={14} className="mr-1" /> Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setViewingDocument(null)}
+                      className="border-border text-foreground hover:bg-muted"
+                    >
+                      Back to List
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {documents.map((doc) => (
+                    <Card
+                      key={doc.id}
+                      className="cursor-pointer hover:shadow-md transition-shadow bg-background border-border"
+                      onClick={() => setViewingDocument(doc.id)}
+                    >
+                      <CardHeader className="p-4">
+                        <div className="flex justify-between items-start">
+                          <FileText className="text-muted-foreground" />
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-foreground hover:bg-muted"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingDocument(doc.id);
+                                setEditDocumentTitle(doc.title);
+                                setEditDocumentContent(doc.content);
+                              }}
+                            >
+                              <Pencil size={14} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-destructive hover:bg-muted"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteDocument(doc.id);
+                              }}
+                            >
+                              <Trash2 size={14} />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-0">
+                        <h3 className="font-medium text-foreground">{doc.title}</h3>
+                        <p className="text-xs text-muted-foreground mt-1">{formatDate(doc.updatedAt)}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+
+                  <Card
+                    className="cursor-pointer hover:shadow-md transition-shadow border-dashed border-2 border-border bg-background flex items-center justify-center h-[140px]"
+                    onClick={createNewDocument}
+                  >
+                    <div className="text-center">
+                      <Plus size={24} className="mx-auto text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">Create New Document</p>
+                    </div>
+                  </Card>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1006,7 +1264,7 @@ const CreativeSpace = () => {
               <div className="flex justify-between items-center">
                 <div>
                   <CardTitle className="text-foreground">Mood Board</CardTitle>
-                  <CardDescription className="text-muted-foreground">Collect visual inspiration</CardDescription>
+                  <CardDescription className="text-muted-foreground my-2">Collect visual inspiration</CardDescription>
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -1028,28 +1286,22 @@ const CreativeSpace = () => {
             </CardHeader>
             <CardContent className="p-4">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {[...Array(7)].map((_, i) => (
-                  <div key={i} className="aspect-square bg-muted rounded-md overflow-hidden relative group">
+                {moodBoardItems.map((item) => (
+                  <div key={item.id} className="aspect-square bg-muted rounded-md overflow-hidden relative group">
                     <img
-                      src="/placeholder.svg"
-                      alt={`Mood board item ${i + 1}`}
+                      src={item.imageUrl || "/placeholder.svg"}
+                      alt={`Mood board item`}
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-50">
                       <div className="flex gap-2">
                         <Button
                           variant="ghost"
                           size="icon"
                           className="text-primary-foreground h-8 w-8 hover:bg-muted"
+                          onClick={() => deleteMoodBoardItem(item.id)}
                         >
-                          <Pencil size={14} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-primary-foreground h-8 w-8 hover:bg-muted"
-                        >
-                          <Trash2 size={14} />
+                          <Trash2 className="text-foreground" size={14} />
                         </Button>
                       </div>
                     </div>
@@ -1058,12 +1310,40 @@ const CreativeSpace = () => {
 
                 <div
                   className="aspect-square bg-background rounded-md border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:bg-muted transition-colors"
+                  onClick={() => setIsAddingMoodBoardItem(true)}
                 >
                   <div className="text-center">
                     <Plus size={24} className="mx-auto text-muted-foreground mb-2" />
                     <p className="text-sm text-muted-foreground">Add Image</p>
                   </div>
                 </div>
+
+                {isAddingMoodBoardItem && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                    <Card className="bg-background border-border p-4">
+                      <CardHeader>
+                        <CardTitle className="text-foreground">Upload Image</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          className="mb-4 text-foreground"
+                          onChange={handleMoodBoardFileChange}
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => setIsAddingMoodBoardItem(false)}
+                            variant="outline"
+                            className="border-border text-foreground hover:bg-muted"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
