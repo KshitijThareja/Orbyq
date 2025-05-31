@@ -1,164 +1,307 @@
 "use client"
 
-import { useState, useRef, useEffect, MouseEvent as ReactMouseEvent } from "react"
+import { useState, useRef, useEffect, MouseEvent as ReactMouseEvent, ChangeEvent } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Plus, FileText, Pencil, Trash2, Save, Undo, Redo, Type, Palette, Grid3X3, ImageIcon } from "lucide-react"
+import { Plus, FileText, Pencil, Trash2, Save, Undo, Redo, Type, Palette, Grid3X3, ImageIcon, Paintbrush } from "lucide-react"
 import { motion } from "framer-motion"
-import placeholder from '../../../../resources/placeholder.svg'
+import { useAuth } from "@/context/AuthContext"
+import Loader from "@/components/Loader"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 type CanvasItemStyle = {
   fontSize?: string;
   fontWeight?: string;
-  colorClass?: string; 
+  colorClass?: string;
   backgroundClass?: string;
   padding?: string;
   borderRadius?: string;
 };
 
 type CanvasItem = {
-  id: number;
+  id: string;
   type: string;
   content: string;
   x: number;
   y: number;
   width: number;
   height: number;
-  style: CanvasItemStyle;
+  style: CanvasItemStyle | null;
 };
 
 const CreativeSpace = () => {
-  const [activeTab, setActiveTab] = useState("canvas")
-  const [canvasItems, setCanvasItems] = useState<CanvasItem[]>([
-    {
-      id: 1,
-      type: "text",
-      content: "Project Ideas",
-      x: 100,
-      y: 50,
-      width: 200,
-      height: 50,
-      style: { fontSize: "24px", fontWeight: "bold", colorClass: "text-foreground" },
-    },
-    {
-      id: 2,
-      type: "text",
-      content:
-        "This is a space for creative thinking and brainstorming. Add notes, images, and links to organize your thoughts.",
-      x: 100,
-      y: 120,
-      width: 300,
-      height: 80,
-      style: { fontSize: "14px", colorClass: "text-muted-foreground" },
-    },
-    {
-      id: 3,
-      type: "image",
-      content: placeholder,
-      x: 500,
-      y: 80,
-      width: 200,
-      height: 150,
-      style: {},
-    },
-    {
-      id: 4,
-      type: "note",
-      content: "Remember to schedule the team meeting for next week",
-      x: 500,
-      y: 250,
-      width: 200,
-      height: 100,
-      style: { backgroundClass: "bg-note", padding: "10px", borderRadius: "4px" },
-    },
-  ])
+  const { callBackend, token } = useAuth();
+  const [activeTab, setActiveTab] = useState("canvas");
+  const [canvasItems, setCanvasItems] = useState<CanvasItem[]>([]);
+  const [selectedItem, setSelectedItem] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState<string>("");
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const [selectedItem, setSelectedItem] = useState<number | null>(null)
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
-  const canvasRef = useRef<HTMLDivElement>(null)
+  const fetchCanvasItems = async () => {
+    setIsLoading(true);
+    try {
+      const data = await callBackend<{ items: CanvasItem[] }>("canvas", "GET");
+      setCanvasItems(data.items);
+      setErrorMessage(null);
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to load canvas items. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCanvasItems();
+  }, []);
 
   const handleItemClick = (e: ReactMouseEvent<HTMLDivElement>, item: CanvasItem) => {
-    e.stopPropagation()
-    setSelectedItem(item.id)
-  }
+    e.stopPropagation();
+    setSelectedItem(item.id);
+  };
+
+  const handleDoubleClick = (item: CanvasItem) => {
+    if (item.type === "text" || item.type === "note") {
+      setEditingItem(item.id);
+      setEditContent(item.content);
+    }
+  };
+
+  const handleContentChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setEditContent(e.target.value);
+  };
+
+  const saveContent = async (item: CanvasItem) => {
+    if (editingItem) {
+      try {
+        const updatedItem = { ...item, content: editContent };
+        await callBackend<void>(`canvas/${item.id}`, "PUT", updatedItem);
+        setCanvasItems((items) =>
+          items.map((i) => (i.id === item.id ? updatedItem : i))
+        );
+        setEditingItem(null);
+        setErrorMessage(null);
+      } catch (err: any) {
+        setErrorMessage("Failed to update item content.");
+        fetchCanvasItems();
+      }
+    }
+  };
 
   const handleCanvasClick = () => {
-    setSelectedItem(null)
-  }
+    setSelectedItem(null);
+    setEditingItem(null);
+  };
 
   const startDrag = (e: ReactMouseEvent<HTMLDivElement>, item: CanvasItem) => {
-    e.stopPropagation()
-    setIsDragging(true)
-    setSelectedItem(item.id)
+    if (editingItem) return; // Prevent dragging while editing
+    e.stopPropagation();
+    setIsDragging(true);
+    setSelectedItem(item.id);
 
-    const rect = e.currentTarget.getBoundingClientRect()
+    const rect = e.currentTarget.getBoundingClientRect();
     setDragOffset({
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
-    })
-  }
+    });
+  };
 
   const onDrag = (e: { clientX: number; clientY: number }) => {
     if (isDragging && selectedItem && canvasRef.current) {
-      const canvasRect = canvasRef.current.getBoundingClientRect()
-      const x = e.clientX - canvasRect.left - dragOffset.x
-      const y = e.clientY - canvasRect.top - dragOffset.y
+      const canvasRect = canvasRef.current.getBoundingClientRect();
+      const x = e.clientX - canvasRect.left - dragOffset.x;
+      const y = e.clientY - canvasRect.top - dragOffset.y;
 
       setCanvasItems((items) =>
-        items.map((item) => (item.id === selectedItem ? { ...item, x: Math.max(0, x), y: Math.max(0, y) } : item)),
-      )
+        items.map((item) =>
+          item.id === selectedItem ? { ...item, x: Math.max(0, x), y: Math.max(0, y) } : item
+        )
+      );
     }
-  }
+  };
 
-  const endDrag = () => {
-    setIsDragging(false)
-  }
+  const endDrag = async () => {
+    setIsDragging(false);
+    if (selectedItem) {
+      const item = canvasItems.find((i) => i.id === selectedItem);
+      if (item) {
+        try {
+          await callBackend<void>(`canvas/${selectedItem}`, "PUT", item);
+          setErrorMessage(null);
+        } catch (err: any) {
+          setErrorMessage("Failed to update item position.");
+          fetchCanvasItems();
+        }
+      }
+    }
+  };
 
   useEffect(() => {
     if (isDragging) {
-      window.addEventListener("mousemove", onDrag)
-      window.addEventListener("mouseup", endDrag)
+      window.addEventListener("mousemove", onDrag);
+      window.addEventListener("mouseup", endDrag);
 
       return () => {
-        window.removeEventListener("mousemove", onDrag)
-        window.removeEventListener("mouseup", endDrag)
-      }
+        window.removeEventListener("mousemove", onDrag);
+        window.removeEventListener("mouseup", endDrag);
+      };
     }
-    return undefined
-  }, [isDragging])
+    return undefined;
+  }, [isDragging, selectedItem, canvasItems]);
 
-  const addItem = (type: string) => {
-    const newItem: CanvasItem = {
-      id: Date.now(),
+  const addItem = async (type: string, file?: File) => {
+    const newItem = {
       type,
-      content: type === "text" ? "New text" : type === "image" ? placeholder : "New note",
+      content: type === "text" ? "New text" : type === "image" ? "/placeholder.svg" : "New note",
       x: 200,
       y: 200,
       width: type === "text" ? 200 : 200,
       height: type === "text" ? 50 : type === "image" ? 150 : 100,
-      style: type === "text"
-        ? { fontSize: "14px", fontWeight: "normal", colorClass: "text-foreground" }
-        : type === "note"
-          ? { backgroundClass: "bg-note", padding: "10px", borderRadius: "4px" }
-          : {},
+      style:
+        type === "text"
+          ? { fontSize: "14px", fontWeight: "normal", colorClass: "text-foreground" }
+          : type === "note"
+            ? { backgroundClass: "bg-note", padding: "10px", borderRadius: "4px" }
+            : {},
+    };
+
+    try {
+      let createdItem: CanvasItem;
+      if (file) {
+        // Use browser's native FormData and fetch for multipart requests
+        const formData = new FormData();
+        // Explicitly set Content-Type for canvasItem part
+        const canvasItemBlob = new Blob([JSON.stringify(newItem)], { type: "application/json" });
+        formData.append("canvasItem", canvasItemBlob);
+        formData.append("file", file);
+
+        const response = await fetch("http://localhost:8080/api/canvas", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}: ${await response.text()}`);
+        }
+
+        createdItem = await response.json();
+      } else {
+        // Use callBackend for JSON requests
+        createdItem = await callBackend<CanvasItem>("canvas", "POST", newItem);
+      }
+      setCanvasItems([...canvasItems, createdItem]);
+      setSelectedItem(createdItem.id);
+      setErrorMessage(null);
+    } catch (err: any) {
+      setErrorMessage("Failed to add new item: " + (err.message || "Unknown error"));
     }
+  };
 
-    setCanvasItems([...canvasItems, newItem])
-    setSelectedItem(newItem.id as unknown as null)
-  }
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      addItem("image", file);
+    }
+  };
 
-  const deleteItem = () => {
+  const updateItemImage = async (item: CanvasItem, file: File) => {
+    try {
+      // Use browser's native FormData and fetch for multipart requests
+      const formData = new FormData();
+      // Explicitly set Content-Type for canvasItem part
+      const canvasItemBlob = new Blob([JSON.stringify(item)], { type: "application/json" });
+      formData.append("canvasItem", canvasItemBlob);
+      formData.append("file", file);
+
+      const response = await fetch(`http://localhost:8080/api/canvas/${item.id}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}: ${await response.text()}`);
+      }
+
+      const updatedItem = { ...item };
+      setCanvasItems((items) =>
+        items.map((i) => (i.id === item.id ? updatedItem : i))
+      );
+      fetchCanvasItems(); // Fetch updated item with new image content
+      setErrorMessage(null);
+    } catch (err: any) {
+      setErrorMessage("Failed to update item image: " + (err.message || "Unknown error"));
+    }
+  };
+
+  const handleStyleChange = async (item: CanvasItem, newStyle: CanvasItemStyle) => {
+    try {
+      const updatedItem = { ...item, style: newStyle };
+      await callBackend<void>(`canvas/${item.id}`, "PUT", updatedItem);
+      setCanvasItems((items) =>
+        items.map((i) => (i.id === item.id ? updatedItem : i))
+      );
+      setErrorMessage(null);
+    } catch (err: any) {
+      setErrorMessage("Failed to update item style.");
+      fetchCanvasItems();
+    }
+  };
+
+  const deleteItem = async () => {
     if (selectedItem) {
-      setCanvasItems((items) => items.filter((item) => item.id !== selectedItem))
-      setSelectedItem(null)
+      try {
+        await callBackend<void>(`canvas/${selectedItem}`, "DELETE");
+        setCanvasItems((items) => items.filter((item) => item.id !== selectedItem));
+        setSelectedItem(null);
+        setEditingItem(null);
+        setErrorMessage(null);
+      } catch (err: any) {
+        setErrorMessage("Failed to delete item.");
+      }
     }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <Loader size="md" text="Loading your creative space..." />
+      </div>
+    );
   }
 
   return (
     <div className="p-6 h-full bg-background">
+      {errorMessage && (
+        <div className="mb-4 p-4 bg-destructive/10 text-destructive rounded-md">
+          {errorMessage}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setErrorMessage(null);
+              fetchCanvasItems();
+            }}
+            className="ml-2"
+          >
+            Retry
+          </Button>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Creative Space</h1>
@@ -219,14 +362,23 @@ const CreativeSpace = () => {
                   >
                     <Type size={14} className="mr-1" /> Text
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-foreground hover:bg-muted"
-                    onClick={() => addItem("image")}
-                  >
-                    <ImageIcon size={14} className="mr-1" /> Image
-                  </Button>
+                  <div>
+                    <input
+                      type="file"
+                      id="image-upload"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleFileChange}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-foreground hover:bg-muted"
+                      onClick={() => document.getElementById("image-upload")?.click()}
+                    >
+                      <ImageIcon size={14} className="mr-1" /> Image
+                    </Button>
+                  </div>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -261,30 +413,207 @@ const CreativeSpace = () => {
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     onClick={(e) => handleItemClick(e, item)}
+                    onDoubleClick={() => handleDoubleClick(item)}
                     onMouseDown={(e) => startDrag(e, item)}
                   >
                     {item.type === "text" && (
-                      <div
-                        className={item.style.colorClass}
-                        style={{
-                          fontSize: item.style.fontSize,
-                          fontWeight: item.style.fontWeight,
-                        }}
-                      >
-                        {item.content}
-                      </div>
+                      <>
+                        {editingItem === item.id ? (
+                          <Input
+                            value={editContent}
+                            onChange={handleContentChange}
+                            onBlur={() => saveContent(item)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") saveContent(item);
+                            }}
+                            autoFocus
+                            className="w-full border-border bg-background text-foreground"
+                          />
+                        ) : (
+                          <div
+                            className={item.style?.colorClass ?? "text-foreground"}
+                            style={{
+                              fontSize: item.style?.fontSize ?? "14px",
+                              fontWeight: item.style?.fontWeight ?? "normal",
+                            }}
+                          >
+                            {item.content}
+                          </div>
+                        )}
+                        {(item.type === "text" || item.type === "note") && selectedItem === item.id && (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="absolute top-0 right-0 text-foreground hover:bg-muted"
+                              >
+                                <Paintbrush size={14} />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80">
+                              <div className="grid gap-4">
+                                <div className="space-y-2">
+                                  <h4 className="font-medium leading-none text-foreground">Style</h4>
+                                  <p className="text-sm text-muted-foreground">Adjust the item’s appearance</p>
+                                </div>
+                                <div className="grid gap-2">
+                                  <div className="grid grid-cols-3 items-center gap-4">
+                                    <Label htmlFor="fontSize">Font Size</Label>
+                                    <Select
+                                      value={item.style?.fontSize ?? "14px"}
+                                      onValueChange={(value) =>
+                                        handleStyleChange(item, {
+                                          ...item.style,
+                                          fontSize: value,
+                                        })
+                                      }
+                                    >
+                                      <SelectTrigger id="fontSize" className="col-span-2">
+                                        <SelectValue placeholder="Select font size" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="12px">12px</SelectItem>
+                                        <SelectItem value="14px">14px</SelectItem>
+                                        <SelectItem value="16px">16px</SelectItem>
+                                        <SelectItem value="18px">18px</SelectItem>
+                                        <SelectItem value="20px">20px</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="grid grid-cols-3 items-center gap-4">
+                                    <Label htmlFor="color">Color</Label>
+                                    <Select
+                                      value={item.style?.colorClass ?? "text-foreground"}
+                                      onValueChange={(value) =>
+                                        handleStyleChange(item, {
+                                          ...item.style,
+                                          colorClass: value,
+                                        })
+                                      }
+                                    >
+                                      <SelectTrigger id="color" className="col-span-2">
+                                        <SelectValue placeholder="Select color" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="text-foreground">Default</SelectItem>
+                                        <SelectItem value="text-red-500">Red</SelectItem>
+                                        <SelectItem value="text-blue-500">Blue</SelectItem>
+                                        <SelectItem value="text-green-500">Green</SelectItem>
+                                        <SelectItem value="text-purple-500">Purple</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        )}
+                      </>
                     )}
                     {item.type === "image" && (
-                      <img
-                        src={item.content || placeholder}
-                        alt="Canvas item"
-                        className="w-full h-full object-cover rounded-md"
-                      />
+                      <>
+                        <img
+                          src={item.content || "/placeholder.svg"}
+                          alt="Canvas item"
+                          className="w-full h-full object-cover rounded-md"
+                        />
+                        {selectedItem === item.id && (
+                          <div>
+                            <input
+                              type="file"
+                              id={`image-update-${item.id}`}
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) updateItemImage(item, file);
+                              }}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="absolute top-0 right-0 text-foreground hover:bg-muted"
+                              onClick={() => document.getElementById(`image-update-${item.id}`)?.click()}
+                            >
+                              <Pencil size={14} />
+                            </Button>
+                          </div>
+                        )}
+                      </>
                     )}
                     {item.type === "note" && (
-                      <div className={`${item.style.backgroundClass} h-full rounded-md p-2 text-foreground`}>
-                        {item.content}
-                      </div>
+                      <>
+                        {editingItem === item.id ? (
+                          <Input
+                            value={editContent}
+                            onChange={handleContentChange}
+                            onBlur={() => saveContent(item)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") saveContent(item);
+                            }}
+                            autoFocus
+                            className="w-full h-full border-border bg-background text-foreground"
+                          />
+                        ) : (
+                          <div
+                            className={`${item.style?.backgroundClass ?? "bg-note"} h-full rounded-md p-2 text-foreground`}
+                            style={{
+                              padding: item.style?.padding ?? "10px",
+                              borderRadius: item.style?.borderRadius ?? "4px",
+                            }}
+                          >
+                            {item.content}
+                          </div>
+                        )}
+                        {(//@ts-ignore
+                          item.type === "text" || item.type === "note") && selectedItem === item.id && (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="absolute top-0 right-0 text-foreground hover:bg-muted"
+                              >
+                                <Paintbrush size={14} />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80">
+                              <div className="grid gap-4">
+                                <div className="space-y-2">
+                                  <h4 className="font-medium leading-none text-foreground">Style</h4>
+                                  <p className="text-sm text-muted-foreground">Adjust the item’s appearance</p>
+                                </div>
+                                <div className="grid gap-2">
+                                  <div className="grid grid-cols-3 items-center gap-4">
+                                    <Label htmlFor="background">Background</Label>
+                                    <Select
+                                      value={item.style?.backgroundClass ?? "bg-note"}
+                                      onValueChange={(value) =>
+                                        handleStyleChange(item, {
+                                          ...item.style,
+                                          backgroundClass: value,
+                                        })
+                                      }
+                                    >
+                                      <SelectTrigger id="background" className="col-span-2">
+                                        <SelectValue placeholder="Select background" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="bg-note">Default</SelectItem>
+                                        <SelectItem value="bg-yellow-100">Yellow</SelectItem>
+                                        <SelectItem value="bg-blue-100">Blue</SelectItem>
+                                        <SelectItem value="bg-green-100">Green</SelectItem>
+                                        <SelectItem value="bg-pink-100">Pink</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        )}
+                      </>
                     )}
                   </motion.div>
                 ))}
@@ -370,7 +699,7 @@ const CreativeSpace = () => {
                 {[...Array(7)].map((_, i) => (
                   <div key={i} className="aspect-square bg-muted rounded-md overflow-hidden relative group">
                     <img
-                      src={placeholder}
+                      src="/placeholder.svg"
                       alt={`Mood board item ${i + 1}`}
                       className="w-full h-full object-cover"
                     />
@@ -409,7 +738,7 @@ const CreativeSpace = () => {
         </TabsContent>
       </Tabs>
     </div>
-  )
-}
+  );
+};
 
-export default CreativeSpace
+export default CreativeSpace;
