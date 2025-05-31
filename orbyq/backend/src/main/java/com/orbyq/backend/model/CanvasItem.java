@@ -12,6 +12,10 @@ public class CanvasItem {
     private UUID id;
 
     @ManyToOne
+    @JoinColumn(name = "canvas_id", nullable = false)
+    private Canvas canvas;
+
+    @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
@@ -37,6 +41,8 @@ public class CanvasItem {
     // Getters and setters
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
+    public Canvas getCanvas() { return canvas; }
+    public void setCanvas(Canvas canvas) { this.canvas = canvas; }
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
     public String getType() { return type; }

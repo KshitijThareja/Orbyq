@@ -2,6 +2,7 @@ package com.orbyq.backend.controller;
 
 import com.orbyq.backend.dto.CanvasDTO;
 import com.orbyq.backend.dto.CanvasItemDTO;
+import com.orbyq.backend.model.Canvas;
 import com.orbyq.backend.model.CanvasItem;
 import com.orbyq.backend.service.CanvasItemService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,24 +15,57 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.Base64;
+import java.util.List;
 
 @RestController
-@RequestMapping("/api/canvas")
+@RequestMapping("/api")
 public class CanvasItemController {
     @Autowired
     private CanvasItemService canvasItemService;
 
-    @GetMapping
+    @GetMapping("/canvases")
     @PreAuthorize("isAuthenticated()")
-    public CanvasDTO getCanvasItems(@AuthenticationPrincipal UserDetails userDetails) {
-        return canvasItemService.getCanvasItems(userDetails.getUsername());
+    public List<CanvasDTO.CanvasInfoDTO> getUserCanvases(
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        return canvasItemService.getUserCanvases(userDetails.getUsername());
     }
 
-    // New endpoint for JSON-only requests (no file upload)
-    @PostMapping(consumes = "application/json")
+    @PostMapping("/canvas/new")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Canvas> createNewCanvas(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam(value = "title", defaultValue = "Untitled Canvas") String title
+    ) {
+        Canvas canvas = canvasItemService.createCanvas(userDetails.getUsername(), title);
+        return ResponseEntity.ok(canvas);
+    }
+
+    @PutMapping("/canvas/{canvasId}/title")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> updateCanvasTitle(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable String canvasId,
+            @RequestParam String title
+    ) {
+        canvasItemService.updateCanvasTitle(userDetails.getUsername(), canvasId, title);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/canvas/{canvasId}")
+    @PreAuthorize("isAuthenticated()")
+    public CanvasDTO getCanvasItems(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable String canvasId
+    ) {
+        return canvasItemService.getCanvasItems(userDetails.getUsername(), canvasId);
+    }
+
+    @PostMapping(value = "/canvas/{canvasId}", consumes = "application/json")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<CanvasItem> createCanvasItemJson(
             @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable String canvasId,
             @RequestBody CanvasItemDTO canvasItemDTO
     ) {
         if (canvasItemDTO.getId() != null) {
@@ -43,15 +77,15 @@ public class CanvasItemController {
         if (canvasItemDTO.getType().equals("image") && (canvasItemDTO.getContent() == null || !canvasItemDTO.getContent().startsWith("data:image/"))) {
             throw new IllegalArgumentException("Image items must have content with a valid data URI when created via JSON");
         }
-        CanvasItem item = canvasItemService.createCanvasItem(userDetails.getUsername(), canvasItemDTO);
+        CanvasItem item = canvasItemService.createCanvasItem(userDetails.getUsername(), canvasId, canvasItemDTO);
         return ResponseEntity.ok(item);
     }
 
-    // Existing endpoint for multipart requests (with file upload)
-    @PostMapping(consumes = "multipart/form-data")
+    @PostMapping(value = "/canvas/{canvasId}", consumes = "multipart/form-data")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<CanvasItem> createCanvasItemMultipart(
             @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable String canvasId,
             @RequestPart(value = "canvasItem", required = true) CanvasItemDTO canvasItemDTO,
             @RequestPart(value = "file", required = false) MultipartFile file
     ) throws IOException {
@@ -68,27 +102,27 @@ public class CanvasItemController {
             String base64Image = Base64.getEncoder().encodeToString(file.getBytes());
             canvasItemDTO.setContent("data:image/" + file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf(".") + 1) + ";base64," + base64Image);
         }
-        CanvasItem item = canvasItemService.createCanvasItem(userDetails.getUsername(), canvasItemDTO);
+        CanvasItem item = canvasItemService.createCanvasItem(userDetails.getUsername(), canvasId, canvasItemDTO);
         return ResponseEntity.ok(item);
     }
 
-    // New endpoint for JSON-only updates (no file upload)
-    @PutMapping(value = "/{itemId}", consumes = "application/json")
+    @PutMapping(value = "/canvas/{canvasId}/{itemId}", consumes = "application/json")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> updateCanvasItemJson(
             @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable String canvasId,
             @PathVariable String itemId,
             @RequestBody CanvasItemDTO canvasItemDTO
     ) {
-        canvasItemService.updateCanvasItem(userDetails.getUsername(), itemId, canvasItemDTO);
+        canvasItemService.updateCanvasItem(userDetails.getUsername(), canvasId, itemId, canvasItemDTO);
         return ResponseEntity.ok().build();
     }
 
-    // Existing endpoint for multipart updates (with file upload)
-    @PutMapping(value = "/{itemId}", consumes = "multipart/form-data")
+    @PutMapping(value = "/canvas/{canvasId}/{itemId}", consumes = "multipart/form-data")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> updateCanvasItemMultipart(
             @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable String canvasId,
             @PathVariable String itemId,
             @RequestPart(value = "canvasItem", required = true) CanvasItemDTO canvasItemDTO,
             @RequestPart(value = "file", required = false) MultipartFile file
@@ -100,17 +134,18 @@ public class CanvasItemController {
             String base64Image = Base64.getEncoder().encodeToString(file.getBytes());
             canvasItemDTO.setContent("data:image/" + file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf(".") + 1) + ";base64," + base64Image);
         }
-        canvasItemService.updateCanvasItem(userDetails.getUsername(), itemId, canvasItemDTO);
+        canvasItemService.updateCanvasItem(userDetails.getUsername(), canvasId, itemId, canvasItemDTO);
         return ResponseEntity.ok().build();
     }
 
-    @DeleteMapping("/{itemId}")
+    @DeleteMapping("/canvas/{canvasId}/{itemId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> deleteCanvasItem(
             @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable String canvasId,
             @PathVariable String itemId
     ) {
-        canvasItemService.deleteCanvasItem(userDetails.getUsername(), itemId);
+        canvasItemService.deleteCanvasItem(userDetails.getUsername(), canvasId, itemId);
         return ResponseEntity.ok().build();
     }
 }

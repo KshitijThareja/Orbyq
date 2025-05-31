@@ -4,9 +4,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.orbyq.backend.dto.CanvasDTO;
 import com.orbyq.backend.dto.CanvasItemDTO;
+import com.orbyq.backend.model.Canvas;
 import com.orbyq.backend.model.CanvasItem;
 import com.orbyq.backend.model.User;
 import com.orbyq.backend.repository.CanvasItemRepository;
+import com.orbyq.backend.repository.CanvasRepository;
 import com.orbyq.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -24,19 +26,43 @@ public class CanvasItemService {
     private CanvasItemRepository canvasItemRepository;
 
     @Autowired
+    private CanvasRepository canvasRepository;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
     private ObjectMapper objectMapper;
 
-    public CanvasDTO getCanvasItems(String username) {
+    public List<CanvasDTO.CanvasInfoDTO> getUserCanvases(String username) {
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        List<CanvasItem> items = canvasItemRepository.findByUser(user);
+        List<Canvas> canvases = canvasRepository.findByUser(user);
+        return canvases.stream().map(canvas -> {
+            CanvasDTO.CanvasInfoDTO canvasInfo = new CanvasDTO.CanvasInfoDTO();
+            canvasInfo.setId(canvas.getId().toString());
+            canvasInfo.setTitle(canvas.getTitle());
+            return canvasInfo;
+        }).collect(Collectors.toList());
+    }
+
+    public CanvasDTO getCanvasItems(String username, String canvasId) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        Canvas canvas = canvasRepository.findById(UUID.fromString(canvasId))
+                .orElseThrow(() -> new IllegalArgumentException("Canvas not found"));
+
+        if (!canvas.getUser().getId().equals(user.getId())) {
+            throw new SecurityException("Unauthorized to access this canvas");
+        }
+
+        List<CanvasItem> items = canvasItemRepository.findByCanvas(canvas);
         List<CanvasItemDTO> itemDTOs = items.stream().map(item -> {
             CanvasItemDTO dto = new CanvasItemDTO();
             dto.setId(item.getId().toString());
+            dto.setCanvasId(item.getCanvas().getId().toString());
             dto.setType(item.getType());
             dto.setContent(item.getContent());
             dto.setX(item.getX());
@@ -46,8 +72,8 @@ public class CanvasItemService {
             try {
                 CanvasItemDTO.StyleDTO style = item.getStyleJson() != null
                     ? objectMapper.readValue(item.getStyleJson(), CanvasItemDTO.StyleDTO.class)
-                    : new CanvasItemDTO.StyleDTO(); // Default to empty StyleDTO if styleJson is null
-                dto.setStyle(style != null ? style : new CanvasItemDTO.StyleDTO()); // Ensure style is never null
+                    : new CanvasItemDTO.StyleDTO();
+                dto.setStyle(style != null ? style : new CanvasItemDTO.StyleDTO());
             } catch (JsonProcessingException e) {
                 throw new RuntimeException("Failed to deserialize style JSON", e);
             }
@@ -55,15 +81,55 @@ public class CanvasItemService {
         }).collect(Collectors.toList());
 
         CanvasDTO canvasDTO = new CanvasDTO();
+        CanvasDTO.CanvasInfoDTO canvasInfo = new CanvasDTO.CanvasInfoDTO();
+        canvasInfo.setId(canvas.getId().toString());
+        canvasInfo.setTitle(canvas.getTitle());
+        canvasDTO.setCanvas(canvasInfo);
         canvasDTO.setItems(itemDTOs);
         return canvasDTO;
     }
 
-    public CanvasItem createCanvasItem(String username, CanvasItemDTO canvasItemDTO) {
+    public Canvas createCanvas(String username, String title) {
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
+        Canvas canvas = new Canvas();
+        canvas.setUser(user);
+        canvas.setTitle(title);
+        canvas.setCreatedAt(LocalDate.now());
+        canvas.setVersion(0L);
+
+        return canvasRepository.save(canvas);
+    }
+
+    public void updateCanvasTitle(String username, String canvasId, String newTitle) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        Canvas canvas = canvasRepository.findById(UUID.fromString(canvasId))
+                .orElseThrow(() -> new IllegalArgumentException("Canvas not found"));
+
+        if (!canvas.getUser().getId().equals(user.getId())) {
+            throw new SecurityException("Unauthorized to update this canvas");
+        }
+
+        canvas.setTitle(newTitle);
+        canvasRepository.save(canvas);
+    }
+
+    public CanvasItem createCanvasItem(String username, String canvasId, CanvasItemDTO canvasItemDTO) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        Canvas canvas = canvasRepository.findById(UUID.fromString(canvasId))
+                .orElseThrow(() -> new IllegalArgumentException("Canvas not found"));
+
+        if (!canvas.getUser().getId().equals(user.getId())) {
+            throw new SecurityException("Unauthorized to create items in this canvas");
+        }
+
         CanvasItem item = new CanvasItem();
+        item.setCanvas(canvas);
         item.setUser(user);
         item.setType(canvasItemDTO.getType());
         item.setContent(canvasItemDTO.getContent());
@@ -72,7 +138,6 @@ public class CanvasItemService {
         item.setWidth(canvasItemDTO.getWidth());
         item.setHeight(canvasItemDTO.getHeight());
         try {
-            // Ensure style is not null; use empty StyleDTO if null
             CanvasItemDTO.StyleDTO style = canvasItemDTO.getStyle() != null
                 ? canvasItemDTO.getStyle()
                 : new CanvasItemDTO.StyleDTO();
@@ -87,14 +152,21 @@ public class CanvasItemService {
         return canvasItemRepository.save(item);
     }
 
-    public void updateCanvasItem(String username, String itemId, CanvasItemDTO canvasItemDTO) {
+    public void updateCanvasItem(String username, String canvasId, String itemId, CanvasItemDTO canvasItemDTO) {
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        Canvas canvas = canvasRepository.findById(UUID.fromString(canvasId))
+                .orElseThrow(() -> new IllegalArgumentException("Canvas not found"));
+
+        if (!canvas.getUser().getId().equals(user.getId())) {
+            throw new SecurityException("Unauthorized to update items in this canvas");
+        }
 
         CanvasItem item = canvasItemRepository.findById(UUID.fromString(itemId))
                 .orElseThrow(() -> new IllegalArgumentException("Canvas item not found"));
 
-        if (!item.getUser().getId().equals(user.getId())) {
+        if (!item.getCanvas().getId().equals(canvas.getId()) || !item.getUser().getId().equals(user.getId())) {
             throw new SecurityException("Unauthorized to update this canvas item");
         }
 
@@ -105,7 +177,6 @@ public class CanvasItemService {
         item.setWidth(canvasItemDTO.getWidth());
         item.setHeight(canvasItemDTO.getHeight());
         try {
-            // Ensure style is not null; use empty StyleDTO if null
             CanvasItemDTO.StyleDTO style = canvasItemDTO.getStyle() != null
                 ? canvasItemDTO.getStyle()
                 : new CanvasItemDTO.StyleDTO();
@@ -118,14 +189,21 @@ public class CanvasItemService {
         canvasItemRepository.save(item);
     }
 
-    public void deleteCanvasItem(String username, String itemId) {
+    public void deleteCanvasItem(String username, String canvasId, String itemId) {
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        Canvas canvas = canvasRepository.findById(UUID.fromString(canvasId))
+                .orElseThrow(() -> new IllegalArgumentException("Canvas not found"));
+
+        if (!canvas.getUser().getId().equals(user.getId())) {
+            throw new SecurityException("Unauthorized to delete items in this canvas");
+        }
 
         CanvasItem item = canvasItemRepository.findById(UUID.fromString(itemId))
                 .orElseThrow(() -> new IllegalArgumentException("Canvas item not found"));
 
-        if (!item.getUser().getId().equals(user.getId())) {
+        if (!item.getCanvas().getId().equals(canvas.getId()) || !item.getUser().getId().equals(user.getId())) {
             throw new SecurityException("Unauthorized to delete this canvas item");
         }
 

@@ -2,6 +2,7 @@ package com.orbyq.backend.dto;
 
 public class CanvasItemDTO {
     private String id;
+    private String canvasId;
     private String type;
     private String content;
     private double x;
@@ -38,6 +39,8 @@ public class CanvasItemDTO {
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
+    public String getCanvasId() { return canvasId; }
+    public void setCanvasId(String canvasId) { this.canvasId = canvasId; }
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }
     public String getContent() { return content; }
