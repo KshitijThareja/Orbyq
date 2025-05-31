@@ -284,88 +284,88 @@ const CreativeSpace = () => {
   }, [isDragging, selectedItem, canvasItems, canvasInfo]);
 
   const addItem = async (type: string, file?: File) => {
-  if (!canvasInfo) return;
+    if (!canvasInfo) return;
 
-  const newItem = {
-    canvasId: canvasInfo.id,
-    type,
-    content: type === "text" ? "New text" : type === "image" ? "" : "New note",
-    x: 200,
-    y: 200,
-    width: type === "text" ? 200 : 200,
-    height: type === "text" ? 50 : type === "image" ? 150 : 100,
-    style:
-      type === "text"
-        ? { fontSize: "14px", fontWeight: "normal", colorClass: "text-foreground" }
-        : type === "note"
-          ? { backgroundClass: "bg-note", padding: "10px", borderRadius: "4px" }
-          : {},
-  };
+    const newItem = {
+      canvasId: canvasInfo.id,
+      type,
+      content: type === "text" ? "New text" : type === "image" ? "" : "New note",
+      x: 200,
+      y: 200,
+      width: type === "text" ? 200 : 200,
+      height: type === "text" ? 50 : type === "image" ? 150 : 100,
+      style:
+        type === "text"
+          ? { fontSize: "14px", fontWeight: "normal", colorClass: "text-foreground" }
+          : type === "note"
+            ? { backgroundClass: "bg-note", padding: "10px", borderRadius: "4px" }
+            : {},
+    };
 
-  try {
-    let createdItem: CanvasItem;
-    if (file) {
-      console.log(`Adding image item with file: ${file.name}`);
-      console.log("Authorization token:", token);
-      const formData = new FormData();
-      const canvasItemBlob = new Blob([JSON.stringify(newItem)], { type: "application/json" });
-      formData.append("canvasItem", canvasItemBlob);
-      formData.append("file", file);
+    try {
+      let createdItem: CanvasItem;
+      if (file) {
+        console.log(`Adding image item with file: ${file.name}`);
+        console.log("Authorization token:", token);
+        const formData = new FormData();
+        const canvasItemBlob = new Blob([JSON.stringify(newItem)], { type: "application/json" });
+        formData.append("canvasItem", canvasItemBlob);
+        formData.append("file", file);
 
-      const response = await fetch(`http://localhost:8080/api/canvas/${canvasInfo.id}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
+        const response = await fetch(`http://localhost:8080/api/canvas/${canvasInfo.id}`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          if (response.status === 403) {
+            throw new Error("Permission denied: You are not authorized to add items to this canvas.");
+          }
+          throw new Error(`Request failed with status ${response.status}: ${errorText}`);
+        }
+
+        const responseText = await response.text();
+        console.log("Raw response from image upload:", responseText);
+        try {
+          createdItem = JSON.parse(responseText);
+        } catch (jsonError) {
+          console.error("Failed to parse response as JSON:", jsonError);
+          await fetchCanvasItems(canvasInfo.id);
+          setErrorMessage(null);
+          return;
+        }
+      } else {
+        console.log(`Adding ${type} item`);
+        const rawResponse = await callBackend(`canvas/${canvasInfo.id}`, "POST", newItem);
+        console.log("Raw response from callBackend:", rawResponse);
+        try {
+          createdItem = typeof rawResponse === "string" ? JSON.parse(rawResponse) : rawResponse;
+        } catch (jsonError) {
+          console.error("Failed to parse callBackend response as JSON:", jsonError);
+          await fetchCanvasItems(canvasInfo.id);
+          setErrorMessage(null);
+          return;
+        }
+      }
+      console.log("Created item:", createdItem);
+
+      setCanvasItems(prevItems => {
+        const newItems = [...prevItems, createdItem];
+        setTimeout(() => saveToHistory(newItems), 0);
+        return newItems;
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        if (response.status === 403) {
-          throw new Error("Permission denied: You are not authorized to add items to this canvas.");
-        }
-        throw new Error(`Request failed with status ${response.status}: ${errorText}`);
-      }
-
-      const responseText = await response.text();
-      console.log("Raw response from image upload:", responseText);
-      try {
-        createdItem = JSON.parse(responseText);
-      } catch (jsonError) {
-        console.error("Failed to parse response as JSON:", jsonError);
-        await fetchCanvasItems(canvasInfo.id);
-        setErrorMessage(null);
-        return;
-      }
-    } else {
-      console.log(`Adding ${type} item`);
-      const rawResponse = await callBackend(`canvas/${canvasInfo.id}`, "POST", newItem);
-      console.log("Raw response from callBackend:", rawResponse);
-      try {
-        createdItem = typeof rawResponse === "string" ? JSON.parse(rawResponse) : rawResponse;
-      } catch (jsonError) {
-        console.error("Failed to parse callBackend response as JSON:", jsonError);
-        await fetchCanvasItems(canvasInfo.id);
-        setErrorMessage(null);
-        return;
-      }
+      setSelectedItem(createdItem.id);
+      setErrorMessage(null);
+    } catch (err: any) {
+      console.error("Error adding item:", err);
+      setErrorMessage(`Failed to add new item: ${err.message || "Unknown error"}`);
     }
-    console.log("Created item:", createdItem);
-    
-    setCanvasItems(prevItems => {
-      const newItems = [...prevItems, createdItem];
-      setTimeout(() => saveToHistory(newItems), 0);
-      return newItems;
-    });
-    
-    setSelectedItem(createdItem.id);
-    setErrorMessage(null);
-  } catch (err: any) {
-    console.error("Error adding item:", err);
-    setErrorMessage(`Failed to add new item: ${err.message || "Unknown error"}`);
-  }
-};
+  };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
