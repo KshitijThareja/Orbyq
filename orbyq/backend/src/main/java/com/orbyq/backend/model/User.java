@@ -20,6 +20,9 @@ public class User {
     @Column(nullable = false)
     private String password;
 
+    @Column(length = 200)
+    private String bio;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "role")
@@ -28,10 +31,11 @@ public class User {
     // Constructors
     public User() {}
 
-    public User(String name, String email, String password, Set<String> roles) {
+    public User(String name, String email, String password, String bio, Set<String> roles) {
         this.name = name;
         this.email = email;
         this.password = password;
+        this.bio = bio;
         this.roles = roles;
     }
 
@@ -66,6 +70,14 @@ public class User {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getBio() {
+        return bio;
+    }
+
+    public void setBio(String bio) {
+        this.bio = bio;
     }
 
     public Set<String> getRoles() {
