@@ -40,12 +40,13 @@ public class AuthService {
         }
 
         Set<String> roles = new HashSet<>();
-        roles.add("USER"); // Default role
+        roles.add("USER");
 
         User user = new User(
                 request.getName(),
                 request.getEmail(),
                 passwordEncoder.encode(request.getPassword()),
+                null,
                 roles
         );
 
