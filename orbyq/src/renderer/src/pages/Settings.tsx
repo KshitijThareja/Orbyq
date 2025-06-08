@@ -553,9 +553,9 @@ const HelpSettings = () => {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="flex items-center justify-between bg-muted/20 p-4 rounded-lg border border-border/50"
+              className="flex items-center justify-between p-4 rounded-lg"
             >
-              <div className="space-y-1">
+              <div className="space-y-1 mt-2">
                 <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
                   <BookOpen className="h-4 w-4 text-primary" />
                   Documentation
@@ -569,7 +569,7 @@ const HelpSettings = () => {
                       <HelpCircle size={16} />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-xs text-foreground bg-background/95 backdrop-blur-sm border-primary/20">
+                  <TooltipContent className="max-w-xs text-foreground bg-background backdrop-blur-sm border-primary">
                     <p>Access guides and tutorials to make the most of the application.</p>
                   </TooltipContent>
                 </Tooltip>
@@ -588,7 +588,7 @@ const HelpSettings = () => {
                     className="relative"
                   >
                     <Card
-                      className="cursor-pointer transition-all bg-background border-border/50 group relative overflow-hidden hover:shadow-[0_0_20px_rgba(var(--primary),0.15)] hover:border-primary/30"
+                      className="cursor-pointer transition-all bg-background border-border group relative overflow-hidden hover:shadow-[0_0_20px_rgba(var(--primary),0.15)] hover:border-primary"
                       onClick={() => setSelectedDoc(key)}
                       role="button"
                       tabIndex={0}
@@ -599,12 +599,12 @@ const HelpSettings = () => {
                         }
                       }}
                     >
-                      <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                      <div className="absolute -right-20 -top-20 h-40 w-40 bg-primary/5 rounded-full group-hover:scale-150 transition-transform duration-500" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      <div className="absolute -right-20 -top-20 h-40 w-40 bg-primary rounded-full group-hover:scale-150 transition-transform duration-500" />
                       <CardHeader className="p-4 pb-2">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center transform group-hover:rotate-12 transition-transform shadow-inner">
+                            <div className="h-8 w-8 rounded-lg flex items-center justify-center transform group-hover:rotate-12 transition-transform shadow-inner">
                               <BookOpen className="h-4 w-4 text-primary" />
                             </div>
                             <CardTitle className="text-sm text-foreground group-hover:text-primary transition-colors">{doc.title}</CardTitle>
@@ -613,7 +613,7 @@ const HelpSettings = () => {
                         </div>
                       </CardHeader>
                       <CardContent className="p-4 pt-0">
-                        <CardDescription className="text-muted-foreground group-hover:text-muted-foreground/80 transition-colors">{doc.description}</CardDescription>
+                        <CardDescription className="text-muted-foreground group-hover:text-muted-foreground transition-colors">{doc.description}</CardDescription>
                       </CardContent>
                     </Card>
                   </motion.div>
@@ -624,10 +624,10 @@ const HelpSettings = () => {
         </AnimatePresence>
 
         <Dialog open={selectedDoc !== null} onOpenChange={() => setSelectedDoc(null)}>
-          <DialogContent className="max-w-3xl bg-background/95 backdrop-blur-sm border-primary/20">
+          <DialogContent className="max-w-3xl bg-background backdrop-blur-sm border-primary">
             <DialogHeader className="space-y-4">
               <DialogTitle className="flex items-center gap-3 text-foreground">
-                <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center shadow-inner">
+                <div className="h-10 w-10 rounded-full flex items-center justify-center shadow-inner">
                   <BookOpen className="h-5 w-5 text-primary" />
                 </div>
                 <div>
@@ -635,7 +635,7 @@ const HelpSettings = () => {
                   <h2 className="text-xl font-semibold">{selectedDoc && documentationContent[selectedDoc].title}</h2>
                 </div>
               </DialogTitle>
-              <DialogDescription className="text-muted-foreground border-l-2 border-primary/20 pl-4">
+              <DialogDescription className="text-muted-foreground border-l-2 border-primary pl-4">
                 {selectedDoc && documentationContent[selectedDoc].description}
               </DialogDescription>
             </DialogHeader>
@@ -650,9 +650,9 @@ const HelpSettings = () => {
                     exit="exit"
                     variants={sectionVariants}
                   >
-                    <div className="space-y-3 p-5 rounded-xl border border-border/50 bg-muted/20 hover:bg-muted/30 transition-colors hover:shadow-[0_0_15px_rgba(var(--primary),0.1)]">
+                    <div className="space-y-3 p-5 rounded-xl border border-border hover:bg-muted transition-colors hover:shadow-[0_0_15px_rgba(var(--primary),0.1)]">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center shadow-inner">
+                        <div className="h-10 w-10 rounded-full flex items-center justify-center shadow-inner">
                           <span className="text-sm font-semibold text-primary">{(index + 1).toString().padStart(2, '0')}</span>
                         </div>
                         <h3 className="text-lg font-semibold text-foreground">{section.title}</h3>
@@ -678,7 +678,7 @@ const HelpSettings = () => {
             transition={{ duration: 0.5 }}
             className="space-y-6"
           >
-            <div className="flex items-center justify-between bg-muted/20 p-4 rounded-lg border border-border/50">
+            <div className="flex items-center justify-between p-4 pt-0 rounded-lg ">
               <div className="space-y-1">
                 <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
                   <Mail className="h-4 w-4 text-primary" />
@@ -693,19 +693,19 @@ const HelpSettings = () => {
                       <HelpCircle size={16} />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-xs text-foreground bg-background/95 backdrop-blur-sm border-primary/20">
+                  <TooltipContent className="max-w-xs text-foreground bg-background backdrop-blur-sm border-primary">
                     <p>Reach out to our support team for personalized assistance.</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             </div>
-            <Card className="border-border/50 bg-gradient-to-br from-background to-muted overflow-hidden relative hover:shadow-[0_0_20px_rgba(var(--primary),0.15)] hover:border-primary/30 transition-all">
-              <div className="absolute inset-0 bg-grid-primary/5" />
+            <Card className="border-border bg-gradient-to-br from-background to-muted overflow-hidden relative hover:shadow-[0_0_20px_rgba(var(--primary),0.15)] hover:border-primary transition-all">
+              <div className="absolute inset-0 bg-grid-primary" />
               <CardContent className="p-6 relative">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center shadow-inner">
+                    <div className="flex items-center mt-4 gap-2">
+                      <div className="h-8 w-8 rounded-full flex items-center justify-center shadow-inner">
                         <Clock className="h-4 w-4 text-primary" />
                       </div>
                       <p className="text-sm text-muted-foreground">Average response time: 24 hours</p>
@@ -714,7 +714,7 @@ const HelpSettings = () => {
                   </div>
                   <Button
                     variant="outline"
-                    className="border-primary/20 bg-background/50 backdrop-blur-sm text-foreground hover:bg-background/80 min-w-[160px] justify-center group hover:border-primary/40"
+                    className="border-primary backdrop-blur-sm text-foreground hover:bg-background min-w-[160px] justify-center group hover:border-primary"
                     aria-label="Contact support"
                     onClick={() => window.location.href = "mailto:support@example.com"}
                   >
