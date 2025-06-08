@@ -10,8 +10,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { useTheme } from "@/components/ThemeProvider"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { User, Palette, Database, HelpCircle, Save, Check } from "lucide-react"
+import { User, Palette, Database, HelpCircle, Save, Check, ArrowRight, BookOpen, Mail, Clock, ExternalLink } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { motion, AnimatePresence } from 'framer-motion'
 
 const SettingsLayout = ({ children }) => {
   return (
@@ -421,90 +423,310 @@ const DataSettings = ({ setError }) => {
 }
 
 const HelpSettings = () => {
+  const [selectedDoc, setSelectedDoc] = useState<string | null>(null)
+
+  const documentationContent = {
+    "Getting Started": {
+      title: "Getting Started Guide",
+      description: "Learn the basics of using the application",
+      content: [
+        {
+          title: "Welcome to Orbyq",
+          text: "Orbyq is your all-in-one workspace for managing tasks, projects, and creative ideas. This guide will help you get started with the basic features."
+        },
+        {
+          title: "Setting Up Your Account",
+          text: "1. Create your profile\n2. Set your preferences\n3. Customize your workspace theme\n4. Connect your integrations"
+        },
+        {
+          title: "Navigation",
+          text: "Learn how to navigate through different sections:\n- Dashboard: Your central hub\n- Projects: Manage your work\n- Tasks: Track your to-dos\n- Creative Space: Express your ideas"
+        }
+      ]
+    },
+    "Task Management": {
+      title: "Task Management Guide",
+      description: "How to create and manage tasks effectively",
+      content: [
+        {
+          title: "Creating Tasks",
+          text: "Learn how to create tasks with:\n- Titles and descriptions\n- Due dates and priorities\n- Labels and categories\n- Assignees and collaborators"
+        },
+        {
+          title: "Organizing Tasks",
+          text: "Effective ways to organize your tasks:\n- Using lists and boards\n- Setting priorities\n- Grouping related tasks\n- Using filters and search"
+        },
+        {
+          title: "Task Tracking",
+          text: "Track your progress with:\n- Status updates\n- Progress indicators\n- Time tracking\n- Completion reports"
+        }
+      ]
+    },
+    "Projects": {
+      title: "Projects Guide",
+      description: "Working with projects and timelines",
+      content: [
+        {
+          title: "Project Creation",
+          text: "Start your project with:\n- Project templates\n- Team setup\n- Timeline planning\n- Resource allocation"
+        },
+        {
+          title: "Project Management",
+          text: "Manage your projects effectively:\n- Track milestones\n- Monitor progress\n- Manage team workload\n- Generate reports"
+        },
+        {
+          title: "Collaboration",
+          text: "Work together seamlessly:\n- Share project updates\n- Communicate with team\n- Manage permissions\n- Track contributions"
+        }
+      ]
+    },
+    "Creative Space": {
+      title: "Creative Space Guide",
+      description: "Using the canvas and creative tools",
+      content: [
+        {
+          title: "Canvas Basics",
+          text: "Get started with the canvas:\n- Creating new canvases\n- Adding elements\n- Using the toolbar\n- Saving your work"
+        },
+        {
+          title: "Working with Elements",
+          text: "Learn about different elements:\n- Text elements\n- Images and media\n- Shapes and drawings\n- Notes and annotations"
+        },
+        {
+          title: "Organization",
+          text: "Keep your ideas organized:\n- Using layers\n- Grouping elements\n- Creating sections\n- Adding links"
+        }
+      ]
+    }
+  }
+
+  const cardVariants = {
+    initial: { opacity: 0, y: 20 },
+    animate: (i: number) => ({
+      opacity: 1,
+      y: 0,
+      transition: {
+        delay: i * 0.1,
+        duration: 0.5,
+        ease: "easeOut"
+      }
+    }),
+    exit: { opacity: 0, y: -20 }
+  }
+
+  const sectionVariants = {
+    initial: { opacity: 0, x: -20 },
+    animate: (i: number) => ({
+      opacity: 1,
+      x: 0,
+      transition: {
+        delay: i * 0.15,
+        duration: 0.5,
+        ease: "easeOut"
+      }
+    }),
+    exit: { opacity: 0, x: 20 }
+  }
+
   return (
     <>
-      <CardHeader>
-        <CardTitle className="text-xl text-foreground">Help & Support</CardTitle>
+      <CardHeader className="pb-4 bg-muted/30 rounded-t-lg border-b border-border">
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="flex items-center gap-2 mb-2"
+        >
+          <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center shadow-inner">
+            <HelpCircle className="h-4 w-4 text-primary" />
+          </div>
+          <CardTitle className="text-xl text-foreground">Help & Support</CardTitle>
+        </motion.div>
         <CardDescription className="text-muted-foreground">
           Get help and learn more about the application
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-foreground">Documentation</h3>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" aria-label="Documentation information">
-                    <HelpCircle size={16} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs text-foreground bg-background">
-                  <p>Access guides and tutorials to make the most of the application.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+      <CardContent className="space-y-8 p-6">
+        <AnimatePresence mode="wait">
+          <div className="space-y-6">
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="flex items-center justify-between bg-muted/20 p-4 rounded-lg border border-border/50"
+            >
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-primary" />
+                  Documentation
+                </h3>
+                <p className="text-xs text-muted-foreground">Browse through our comprehensive guides and tutorials</p>
+              </div>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors" aria-label="Documentation information">
+                      <HelpCircle size={16} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-foreground bg-background/95 backdrop-blur-sm border-primary/20">
+                    <p>Access guides and tutorials to make the most of the application.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </motion.div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <AnimatePresence>
+                {Object.entries(documentationContent).map(([key, doc], i) => (
+                  <motion.div
+                    key={key}
+                    custom={i}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    variants={cardVariants}
+                    className="relative"
+                  >
+                    <Card
+                      className="cursor-pointer transition-all bg-background border-border/50 group relative overflow-hidden hover:shadow-[0_0_20px_rgba(var(--primary),0.15)] hover:border-primary/30"
+                      onClick={() => setSelectedDoc(key)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          setSelectedDoc(key)
+                        }
+                      }}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      <div className="absolute -right-20 -top-20 h-40 w-40 bg-primary/5 rounded-full group-hover:scale-150 transition-transform duration-500" />
+                      <CardHeader className="p-4 pb-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center transform group-hover:rotate-12 transition-transform shadow-inner">
+                              <BookOpen className="h-4 w-4 text-primary" />
+                            </div>
+                            <CardTitle className="text-sm text-foreground group-hover:text-primary transition-colors">{doc.title}</CardTitle>
+                          </div>
+                          <ArrowRight className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition-all transform group-hover:translate-x-1" />
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-0">
+                        <CardDescription className="text-muted-foreground group-hover:text-muted-foreground/80 transition-colors">{doc.description}</CardDescription>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[
-              { title: "Getting Started", description: "Learn the basics of using the application" },
-              { title: "Task Management", description: "How to create and manage tasks effectively" },
-              { title: "Projects", description: "Working with projects and timelines" },
-              { title: "Creative Space", description: "Using the canvas and creative tools" },
-            ].map((doc, i) => (
-              <Card
-                key={i}
-                className="cursor-pointer hover:shadow-sm transition-shadow bg-background border-border"
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                  }
-                }}
-              >
-                <CardHeader className="p-4 pb-2">
-                  <CardTitle className="text-sm text-foreground">{doc.title}</CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 pt-0">
-                  <CardDescription className="text-muted-foreground">{doc.description}</CardDescription>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
+        </AnimatePresence>
+
+        <Dialog open={selectedDoc !== null} onOpenChange={() => setSelectedDoc(null)}>
+          <DialogContent className="max-w-3xl bg-background/95 backdrop-blur-sm border-primary/20">
+            <DialogHeader className="space-y-4">
+              <DialogTitle className="flex items-center gap-3 text-foreground">
+                <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center shadow-inner">
+                  <BookOpen className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Documentation</p>
+                  <h2 className="text-xl font-semibold">{selectedDoc && documentationContent[selectedDoc].title}</h2>
+                </div>
+              </DialogTitle>
+              <DialogDescription className="text-muted-foreground border-l-2 border-primary/20 pl-4">
+                {selectedDoc && documentationContent[selectedDoc].description}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6 py-6">
+              <AnimatePresence>
+                {selectedDoc && documentationContent[selectedDoc].content.map((section, index) => (
+                  <motion.div
+                    key={index}
+                    custom={index}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    variants={sectionVariants}
+                  >
+                    <div className="space-y-3 p-5 rounded-xl border border-border/50 bg-muted/20 hover:bg-muted/30 transition-colors hover:shadow-[0_0_15px_rgba(var(--primary),0.1)]">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center shadow-inner">
+                          <span className="text-sm font-semibold text-primary">{(index + 1).toString().padStart(2, '0')}</span>
+                        </div>
+                        <h3 className="text-lg font-semibold text-foreground">{section.title}</h3>
+                      </div>
+                      <div className="ml-[3.25rem]">
+                        <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{section.text}</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Separator className="bg-border" />
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-foreground">Contact Support</h3>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" aria-label="Contact support information">
-                    <HelpCircle size={16} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs text-foreground bg-background">
-                  <p>Reach out to our support team for personalized assistance.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Need more help? Our support team is ready to assist you.
-          </p>
-          <Button
-            variant="outline"
-            className="border-border text-foreground hover:bg-muted"
-            aria-label="Contact support"
-            onClick={() => window.location.href = "mailto:support@example.com"}
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.5 }}
+            className="space-y-6"
           >
-            Contact Support
-          </Button>
-        </div>
+            <div className="flex items-center justify-between bg-muted/20 p-4 rounded-lg border border-border/50">
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-primary" />
+                  Contact Support
+                </h3>
+                <p className="text-xs text-muted-foreground">Get personalized help from our support team</p>
+              </div>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors" aria-label="Contact support information">
+                      <HelpCircle size={16} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-foreground bg-background/95 backdrop-blur-sm border-primary/20">
+                    <p>Reach out to our support team for personalized assistance.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <Card className="border-border/50 bg-gradient-to-br from-background to-muted overflow-hidden relative hover:shadow-[0_0_20px_rgba(var(--primary),0.15)] hover:border-primary/30 transition-all">
+              <div className="absolute inset-0 bg-grid-primary/5" />
+              <CardContent className="p-6 relative">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center shadow-inner">
+                        <Clock className="h-4 w-4 text-primary" />
+                      </div>
+                      <p className="text-sm text-muted-foreground">Average response time: 24 hours</p>
+                    </div>
+                    <p className="text-sm text-foreground">Need more help? Our support team is ready to assist you.</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="border-primary/20 bg-background/50 backdrop-blur-sm text-foreground hover:bg-background/80 min-w-[160px] justify-center group hover:border-primary/40"
+                    aria-label="Contact support"
+                    onClick={() => window.location.href = "mailto:support@example.com"}
+                  >
+                    <Mail className="h-4 w-4 mr-2 text-primary group-hover:animate-bounce" />
+                    Contact Support
+                    <ExternalLink className="h-3 w-3 ml-2 text-muted-foreground" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </AnimatePresence>
       </CardContent>
     </>
   )
