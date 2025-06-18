@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -12,7 +12,7 @@ import { useTheme } from "@/components/ThemeProvider"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { User, Palette, Database, HelpCircle, Save, Check, ArrowRight, BookOpen, Mail, Clock, ExternalLink } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { motion, AnimatePresence } from 'framer-motion'
 
 const SettingsLayout = ({ children }) => {
@@ -347,9 +347,26 @@ const AppearanceSettings = ({ setError }) => {
   )
 }
 
+interface ImportPreview {
+  canvases: number;
+  canvasItems: number;
+  documents: number;
+  moodBoardItems: number;
+  todos: number;
+  projects: number;
+  tasks: number;
+  activityLogs: number;
+  ideas: number;
+}
+
 const DataSettings = ({ setError }) => {
   const { callBackend, logout } = useAuth()
   const [success, setSuccess] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null)
+  const [showImportDialog, setShowImportDialog] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleDeleteAccount = async () => {
     if (!confirm("Are you sure you want to delete your account? This action cannot be undone.")) return
@@ -369,15 +386,245 @@ const DataSettings = ({ setError }) => {
     }
   }
 
+  const handleExportData = async () => {
+    try {
+      setIsExporting(true)
+      const data = await callBackend("export/all", "GET")
+      
+      // Create a blob and download the file
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `orbyq-export-${new Date().toISOString().split('T')[0]}.json`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      
+      setSuccess(true)
+      setTimeout(() => setSuccess(false), 3000)
+      setError(null)
+    } catch (err) {
+      setError(
+        err && typeof err === "object" && "message" in err
+          ? (err as { message?: string }).message || "Failed to export data"
+          : "Failed to export data"
+      )
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Check file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setError("File size exceeds 10MB limit")
+      return
+    }
+
+    try {
+      const reader = new FileReader()
+      
+      reader.onload = async (e) => {
+        try {
+          const content = e.target?.result as string
+          const data = JSON.parse(content)
+          
+          // Validate the data structure
+          if (!data || typeof data !== 'object') {
+            setError("Invalid data format")
+            return
+          }
+
+          // Create preview of what will be imported
+          const preview: ImportPreview = {
+            canvases: data.canvases?.length || 0,
+            canvasItems: data.canvasItems?.length || 0,
+            documents: data.documents?.length || 0,
+            moodBoardItems: data.moodBoardItems?.length || 0,
+            todos: data.todos?.length || 0,
+            projects: data.projects?.length || 0,
+            tasks: data.tasks?.length || 0,
+            activityLogs: data.activityLogs?.length || 0,
+            ideas: data.ideas?.length || 0
+          }
+
+          setImportPreview(preview)
+          setShowImportDialog(true)
+        } catch (err) {
+          setError("Invalid JSON file")
+        }
+      }
+
+      reader.onerror = () => {
+        setError("Failed to read the file")
+      }
+
+      reader.readAsText(file)
+    } catch (err) {
+      setError(
+        err && typeof err === "object" && "message" in err
+          ? (err as { message?: string }).message || "Failed to read file"
+          : "Failed to read file"
+      )
+    }
+  }
+
+  const handleImportConfirm = async () => {
+    if (!importPreview) return
+
+    try {
+      setIsImporting(true)
+      const file = fileInputRef.current?.files?.[0]
+      if (!file) return
+
+      const reader = new FileReader()
+      
+      reader.onload = async (e) => {
+        try {
+          const content = e.target?.result as string
+          const data = JSON.parse(content)
+          
+          await callBackend("import/all", "POST", data)
+          
+          // Create success message with import summary
+          const summary = Object.entries(importPreview)
+            .filter(([_, count]) => count > 0)
+            .map(([key, count]) => `${count} ${key.replace(/([A-Z])/g, ' $1').toLowerCase()}`)
+            .join(', ')
+          
+          setSuccess(true)
+          setError(null)
+          setShowImportDialog(false)
+          setImportPreview(null)
+          if (fileInputRef.current) {
+            fileInputRef.current.value = ''
+          }
+          
+          // Show success message with summary
+          const successMessage = `Successfully imported ${summary}`
+          setSuccess(true)
+          setTimeout(() => setSuccess(false), 5000)
+        } catch (err) {
+          setError(
+            err && typeof err === "object" && "message" in err
+              ? (err as { message?: string }).message || "Failed to import data"
+              : "Failed to import data"
+          )
+        } finally {
+          setIsImporting(false)
+        }
+      }
+
+      reader.onerror = () => {
+        setError("Failed to read the file")
+        setIsImporting(false)
+      }
+
+      reader.readAsText(file)
+    } catch (err) {
+      setError(
+        err && typeof err === "object" && "message" in err
+          ? (err as { message?: string }).message || "Failed to import data"
+          : "Failed to import data"
+      )
+      setIsImporting(false)
+    }
+  }
+
   return (
     <>
       <CardHeader>
         <CardTitle className="text-xl text-foreground">Data Management</CardTitle>
         <CardDescription className="text-muted-foreground">
-          Manage your account data
+          Manage your account data and settings
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-foreground">Data Import/Export</h3>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" aria-label="Data import/export information">
+                    <HelpCircle size={16} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>Export your data for backup or import previously exported data. Imported data will be merged with your existing data.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <div className="space-y-4 rounded-md border border-border p-4 bg-muted/5">
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-sm font-medium text-foreground">Export Data</h4>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Download all your data as a JSON file for backup or transfer.
+                </p>
+                <Button
+                  variant="outline"
+                  className="border-border hover:bg-muted"
+                  onClick={handleExportData}
+                  disabled={isExporting}
+                >
+                  {isExporting ? (
+                    <>
+                      <span className="animate-spin mr-2">⟳</span>
+                      Exporting...
+                    </>
+                  ) : (
+                    <>
+                      <Database className="h-4 w-4 mr-2" />
+                      Export Data
+                    </>
+                  )}
+                </Button>
+              </div>
+              <Separator className="bg-border" />
+              <div>
+                <h4 className="text-sm font-medium text-foreground">Import Data</h4>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Import previously exported data. This will add the imported data to your existing data.
+                </p>
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  ref={fileInputRef}
+                />
+                <Button
+                  variant="outline"
+                  className="border-border hover:bg-muted"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isImporting}
+                >
+                  {isImporting ? (
+                    <>
+                      <span className="animate-spin mr-2">⟳</span>
+                      Importing...
+                    </>
+                  ) : (
+                    <>
+                      <Database className="h-4 w-4 mr-2" />
+                      Import Data
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <Separator className="bg-border" />
+
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium text-destructive">Danger Zone</h3>
@@ -415,9 +662,59 @@ const DataSettings = ({ setError }) => {
       <CardFooter className="flex justify-between items-center">
         <div className={`flex items-center text-sm gap-2 ${success ? 'opacity-100' : 'opacity-0'} transition-opacity`}>
           <Check size={16} className="text-green-500" />
-          <span className="text-green-500">Account deleted</span>
+          <span className="text-green-500">Operation completed successfully</span>
         </div>
       </CardFooter>
+
+      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirm Import</DialogTitle>
+            <DialogDescription>
+              The following items will be imported and merged with your existing data:
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {importPreview && Object.entries(importPreview).map(([key, count]) => (
+              (count as number) > 0 && (
+                <div key={key} className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    {key.replace(/([A-Z])/g, ' $1').toLowerCase()}
+                  </span>
+                  <span className="text-sm font-medium">{count}</span>
+                </div>
+              )
+            ))}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowImportDialog(false)
+                setImportPreview(null)
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = ''
+                }
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleImportConfirm}
+              disabled={isImporting}
+            >
+              {isImporting ? (
+                <>
+                  <span className="animate-spin mr-2">⟳</span>
+                  Importing...
+                </>
+              ) : (
+                'Import Data'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

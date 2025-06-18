@@ -77,4 +77,7 @@ public class UserController {
         userRepository.delete(user);
         return ResponseEntity.ok(Map.of("message", "Account deleted successfully"));
     }
+
+
+    
 }

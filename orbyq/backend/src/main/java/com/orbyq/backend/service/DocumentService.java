@@ -87,4 +87,15 @@ public class DocumentService {
 
         documentRepository.delete(document);
     }
+
+    public Document getDocumentByIdAndUser(String documentId, String username) {
+        User user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        Document document = documentRepository.findById(UUID.fromString(documentId))
+                .orElseThrow(() -> new IllegalArgumentException("Document not found"));
+        if (!document.getUser().getId().equals(user.getId())) {
+            throw new SecurityException("Unauthorized to access this document");
+        }
+        return document;
+    }
 }
